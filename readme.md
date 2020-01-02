@@ -144,7 +144,7 @@ export default Library;
 
 These arrays can be of any length. The string that is actually used is selected at random. Do not wonder at the translation of `north: 'north'`. The 4 possible directions have an english name string, which is translated by the library before it is used. So when you are writing a game in another language, you might want to write: `north: 'Norden'`.
 
-Within the string patterns there are varibales available. To have a the value of a variable written into a string you need to write out it's name in curly brackets. So for instance, if you would like to write out the current amount of ammunition the player has loaded, you could write: `You have {playerAmmunition} shots in your weapon.` and it would be printed as `'You have 3 shots in your weapon'`. *All variables are accessible in all contexts, however some are at a nonsense value.* If you would print the name of the current enemy while walking like this: `You walk in {direction}ern direction. You are meeting a {enemyName}` it would be printed as `'You walk in southern direction. You are meeting a goblin'`, as there is currently no enemy and the variable is still at the value of the enemy the player has fought last.
+Within the string patterns there are varibales available. To have a the value of a variable written into a string you need to write out it's name in curly brackets. So for instance, if you would like to write out the current amount of ammunition the player has loaded, you could write: `You have {playerAmmunition} shots in your weapon.` and it would be printed as `'You have 3 shots in your weapon'`. All variables are accessible in all contexts, however some are at a nonsense value. If you would print the name of the current enemy while walking like this: `You walk in {direction}ern direction. You are meeting a {enemyName}` it would be printed as `'You walk in southern direction. You are meeting a goblin'`, as there is currently no enemy and the variable is still at the value of the enemy the player has fought last.
 
 The following variables can be used from within a string pattern:
 
@@ -154,9 +154,6 @@ The following variables can be used from within a string pattern:
 - area - the name of the tile the player is currently standing on.
 - playerHealth - the current health of the player.
 - playerMaxHealth - the maximum amount of health the player can have.
-- *playerLevel - the current level of the player.*
-- *playerXP - the current amount of XP of the player.*
-- *playerXPNeeded - the amount of XP the player needs to the next level.*
 - playerAmmunition - the current amount of ammunition the player has loaded.
 - playerMaxAmmunition - the capacity of the weapon the player is currently holding.
 - playerWeapon - the name of the weapon the player has currently equipped.
@@ -169,12 +166,12 @@ The following variables can be used from within a string pattern:
 - enemyDeathcry - a random deathcry from the list of deathcrys the enemy has.
 - enemyHealth - the current amount of health of the enemy. 0 when there is no combat happening at the moment.
 - enemyMaxHealth - the maximum amount of health the enemy can have.
-- enemyXP - the amount of XP this enemy is worth.
+- xpGain - the amount of XP the current enemy is worth/the current goal yields.
 - enemyWeapon, enemyWeaponSound, enemyArmor, enemyArmorSound - equivalent to the values for player, just specific to the enemy instead of the player.
 
 ### Enemys.js
 
-This file contains an array of objects with each representing a enemy within the game. The file should look like this:
+This file contains an array of objects with each representing a enemy within the game. These objects are called by tiles in the `Tiles.js` file. The file should look like this:
 
 ```
 const Enemys = [
@@ -228,10 +225,193 @@ The behavior field contains different behaviors for this enemy. Each behavior ha
 - S - shoot
 - D - dodge
 - X - random behavior is selected from the 3 above
+- \* - the best possibile move, based on the players action, is selected
+
+#### Some thoughts on patterns
+
+Weapon and armor are not the only things that make an enemy hard to deal with. The pattern is quite important as well. You have to think about the following things when designing a pattern: how much damage will it deal? How random will it be? How hard is it to recognise?
+
+The damage output of a pattern is important, as the game is not over when the fight is done. The more damage this enemy will deal before he is dead, the harder the game will be to continue. The most damaging pattern is obviously: `'RS'`. Try to mix in some longer moments of dodging to reduce damage output, especially with highly damaging weapons attached.
+
+The randomness of a pattern is mainly due to the usage of the `X`. The more `X` the harder it will be to recognise, as you cannot be sure if the action was random or part of the pattern. But the `*` can seem to be random as well, as the player is unable to know if the actual action came from the `X` or the `*`. So to control, how good a pattern is to recognise (and therefore to be easily beaten) you have to think about the amount of `X` and `*` characters in it.
+
+But the length of the pattern is important as well. The shorter it is, the faster the player will notice when the pattern starts again and will be able to beat it. Mixing in *fake* repeats can make a pattern harder to guess, just as the usage of `X` will. When you have `'RRSDSRRSSD'` the player might guess, that the second time the double reload appears, the pattern is already repeating. He might then dodge the first shot (good) but will then reload, as he is expecting the enemy to dodge anyways. The player will then be hit by a shot he was totally not expecting.
+
+Here are some patterns with comments on their difficulty:
+
+- `RDS` - insanely easy
+- `RDSRSD` - easy with a fake repeat
+- `RDSR**` - easy to guess but very hard to combat
+- `DX` - insanely easy
+- `DRDXDRD*` - easier to recognise then to combat
+- `RXR*X` - very hard tp recognise and combat. The combination `R*X` makes sure, that atleast some damage is done, even if most of the `X` come out as a *dodge*.
+
+### Player.js
+
+This file contains values that define how the player will level up, behave and with what equipment he will start. The file should look like this:
+
+```js
+const Player = {
+  baseHealth: 20,
+  healthPerLevel: 5,
+  start: {
+    position: {x: 0, y: 0},
+    weapon: {
+      name: 'flint lock rifle',
+      power: 5,
+      deviance: 2,
+      capacity: 3,
+      sounds: [
+        'Peng!',
+        'Bauz!',
+        'Bumm!'
+      ]
+    },
+    armor: {
+      name: 'light plate armor',
+      power: 4,
+      sounds: [
+        'Zeeng',
+        'aches'
+      ]
+    }
+  },
+  battlecrys: [
+    'Engarde!',
+    'I will wreck you!'
+  ],
+  deathcrys: [
+    'Ahhhhhhh',
+    'I took an arrow to the knee!'
+  ]
+}
+export default Player;
+```
+
+### *Story.js*
+
+This file contains an array with task objects. These tasks represent the story, that is being told in the game. This file should look like this:
+
+```js
+const Story = [
+	{
+    name: '',
+    prolog: '',
+    epilog: '',
+    description: '',
+    xp: 20,
+    loot: {
+      type: 'weapon',
+      name: 'flint lock rifle',
+      power: 5,
+      deviance: 2,
+      capacity: 3,
+      sounds: [
+        'Peng!',
+        'Bauz!',
+        'Bumm!'
+      ]
+    }
+    goals: [
+      {
+        type: 'location',
+        position: {
+          x: 10,
+          y: -5
+        }
+      }
+  	]
+		tiles: [
+      {
+        name: 'forsaken castle',
+        happening: 'encounter',
+        enemys: [
+          'ghost of the king'
+        ]
+  		}
+    ]
+  }
+]
+export default Story;
+```
+
+A chapter begins when the one before is completed. The player is then presented with the `epilog` of the finished chapter followed by the `prolog` of the new task. The first chapters `prolog` will be appended to the overall introduction at the start of the game. The last chapters `epilog` will be written right before the end credits. A chapters `description` and `name` will be given to the player when he calls the `task` function through the *Avatar*. The chapter number is defined by the position of the chapter in the `Story.js` array.
+
+The `xp` are given to the player after finishing the chapter. The player is also offered a *loot dialogue* containing the *item* in the `loot` field. You may specify a string or an array of strings instead of writing out the object.
+
+```js
+loot: 'Golden Bow',
+```
+
+If you specified a string, the item with this name from `Item.js` in the `config.js` will be given as loot. When you specify an array, a random string will be selected.
+
+```js
+loot: ['Golden Bow','Silver Bow','Flint Lock Pistol']
+```
+
+The `goal` property defines when the chapter will be finished. There are currently only three different types of goals:
+
+- location - reaching a certain location
+  - `position` set to an object containig a `x` and `y` property. When this point is reached in the game while this chapter is active, the chapter will be triggered as finished. If you don't overwrite the specified position, all triggered happenings will happen right after the task is finished.
+- distance - travelling a certain amount of steps
+  - `steps` set to a number of steps to walk
+- fight - fighting a certain amount of enemys
+  - `fights` set to the number of fights the player will have to win before finishing the chapter.
+- level - a certain level has to be reached before the chapter is finished
+  - `level` set to the level, the player will have to reach.
+
+To define what kind your goal is you have to write the correct `type` property. Each type needs a certain amount of additional information as specified above. You can combine multiple types in one goal. The chapter will be finished when all goals are reached. To specify multiple goals, simply add more goal objects to the `goals:` array. **Please be aware that specifying multiple goals of the same type will result in the game possibly breaking. Use multiple chapters instead.**
+
+The `tiles` property is used to overwrite certain tiles on the map while the chapter is active. This can be used to have more or specific enemys around the area or to add a boss the `location` of the goal. Simply specify a tile in the style the `Tiles.js` file uses and add a `x` and a `y` property to specify the location where this tile should be loaded. These tiles can have happenings as well. Any happening will be resolved before the chapter is finished, so a fight has to be won before the chapter is done.
+
+### *Items.js*
+
+This file contains an array containig objects which represent different items in the game. The file should look like this:
+
+```js
+
+```
+
+Each item needs a `name` and `description` field, which is used in the loot dialogue. There are currently three different types of items which are to be specified by the `type` property. Each type needs certain additional propertys:
+
+- `weapon`
+  - `power` - the base to use for damage calculations
+  - `deviance` - how much the actual damage can deviate from the base (specified with *power*)
+  - `capacity` - how many rounds may be loaded aka how many times *reload* can be used
+  - `sounds` - array with sound strings that may be used
+- `armor`
+  - `power` - how much damage it can reduce
+  - `sounds` - array with sound strings that may be used
+- `potion`
+  - `trigger` - when this potion is used/can be used
+    - `pickup` - effect happens upon picking up the potion
+    - `combat` - potion can be consumed from the inventory during combat
+    - `inventory` - potion can be consumed from the inventory at any time
+  - `durationtype` - the way the duration is determined
+    - `once` - the effect happens only once
+    - `infinite` - the effect takes place forever
+    - `steps` - the effect takes place for a certain amount of steps
+    - `fights` - the effect takes place for a certain amount of fights
+    - `rounds` - the effect takes place for a certain amount of fighting rounds, starting in the next (or current) fight. Effect ends when the next (or current) fight ends.
+  - `duration` - specifies the number for the durationtype. Is ignored for `durationtype: 'once'` and `durationtype: 'infinite'`
+  - `effects` - an array of the effects that should happen when the potion is triggered and everytime the duration retriggers it
+    - `parameter` - the parameter that should be modified
+    - `modificatiotype` - the modification that shall be done on every trigger. More below.
+      - `set` - sets the parameter to a certain value
+      - `up` - ups the parameter by a certain value (upping by a negative value will result in a reduction of the parameter)
+      - `lock` - will keep the parameter from being changed while the potion is active. Keep in mind, that all effects of the potion happen in order of the array. So if you want to set and then lock a parameter then you have to do the setting first.
+    - `modification` - the value of the modification, can be ignored for `modificationtype: 'lock'`. To set a numerical value to its highest value, simply set it to an insanely high value. The game will cap it at the max.
+      - `1` - specifies a certain number
+      - `''` - specifies a certain string
+      - `[]` - use a random value from the specified array
 
 ## Documentation
 
 In the following I will explain a bit more about certain aspects of the game.
+
+### Interaction
+
+
 
 ### Combat
 

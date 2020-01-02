@@ -3,6 +3,7 @@ const Library = {
   errorMoveInCombat: 'You are fighting, do not try to flee!',
   errorNoCombat: 'You are currently not in a fight.',
   errorNoValidDirection: 'It seems that the direction you are trying to move to is non existent.',
+  errorNoTasks: 'There are currently no tasks available.',
   north: 'north',
   east: 'east',
   south: 'south',
@@ -13,7 +14,10 @@ const Library = {
     'You start moving into the {direction}. You enter a {area}.'
   ],
   encounter: [
-    "You move to the {direction} into a {area}. You are immedeatly attacked by a {enemyBehavior} {enemyName} in {enemyArmor}, wielding a {enemyWeapon}. The enemy shouts: '{enemyBattlecry}' while hurdling at you!",
+    "You move to the {direction} into a {area}. You are immedeatly attacked by a {enemyBehavior} {enemyName} in a {enemyArmor}, wielding a {enemyWeapon}. The enemy shouts: '{enemyBattlecry}' while hurdling at you!",
+  ],
+  taskFinished: [
+    '{epilog}. You have gained {xpGain}XP. {prolog}'
   ],
   dodgePlayer: [
     "You [{playerHealth}/{playerMaxHealth}] throw yourself into cover."
@@ -33,20 +37,29 @@ const Library = {
   noAmmunitionPlayer: [
     'You [{playerHealth}/{playerMaxHealth}] try to fire your unloaded {playerWeapon} [{playerAmmunition}/{playerMaxAmmunition}] and unsurprisingly fail to do so!'
   ],
+  diePlayer: [
+    "The opposing {enemyName} mortally wounded you. You ache in pain, shout your last: '{playerDeathcry}' and sink to the ground."
+  ],
   dodgeEnemy: [
     "The enemy {enemyName} [{enemyHealth}/{enemyMaxHealth}] lunges behind a rock."
   ],
   reloadEnemy: [
     'The enemy {enemyName} [{enemyHealth}/{enemyMaxHealth}] reloads his {enemyWeapon}.'
   ],
+  reloadFailedEnemy: [
+    'Your enemy [{enemyHealth}/{enemyMaxHealth}] tries to load another shot, but the {enemyWeapon} is already fully loaded.'
+  ],
   shootEnemy: [
     'The opposing {enemyName} [{enemyHealth}/{enemyMaxHealth}] fires his {enemyWeapon}, which {enemyWeaponSound}, hurting you badly with {enemyDamage} points of damage. Your {playerArmor} {playerArmorSound}.'
   ],
   shotMissedEnemy: [
-    'The opposing {enemyName} misses you slightly with his {enemyWeapon}.'
+    'The opposing {enemyName} [{enemyHealth}/{enemyMaxHealth}] misses you slightly with his {enemyWeapon}.'
+  ],
+  noAmmunitionEnemy: [
+    'Your enemy [{enemyHealth}/{enemyMaxHealth}] has no shots left but still tries to shoot, stupid...'
   ],
   dieEnemy: [
-    "You wounded the opposing {enemyName} [{enemyHealth}/{enemyMaxHealth}] badly with your {playerWeapon}. He sinks to the ground, mortally wounded, shouting in agony: '{enemyDeathcry}'."
+    "You wounded the opposing {enemyName} [{enemyHealth}/{enemyMaxHealth}] badly with your {playerWeapon}. He sinks to the ground, mortally wounded, shouting in agony: '{enemyDeathcry}'. You have gained {xpGain}XP"
   ],
   lookDifferent: [
     'You look to the {direction}. You see a {close} upclose and a {far} in the distance.',

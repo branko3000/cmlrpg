@@ -2,6 +2,7 @@ import Map from './map.js';
 import Log from './log.js';
 import Player from './player.js';
 import Combat from './combat.js';
+import Story from './story.js';
 import {Point, Direction, Information, Library, Finder} from '../tools/utils.js';
 
 /* MAIN
@@ -9,10 +10,22 @@ import {Point, Direction, Information, Library, Finder} from '../tools/utils.js'
  */
 export default function Main(config){
   this.log = new Log(); //creates and stores a new Log
-  this.player = new Player(new Point(0,0),20); //creates and stores a new virtual player with starting position and health
+  this.player = new Player(config.player); //creates and stores a new virtual player with starting position and health
   this.map = new Map(3105,config.tiles); //creates and stores a new map with a seed and a set of tiles from the config
   this.library = new Library(config.library); //creates and stores a new library with a set of books to read from, straight from the config
+  this.story = new Story(config.story);
   this.combat; //creates the combat variable which is used to handle combats. Empty means no combat at the moment
+  this.giveConfigValue = function(value){
+    return config[value];
+  }
+  //will return the tile at a certain position, looks for overwrites first
+  this.giveTile = function(position){
+    let tile = this.story.giveTile(position); //if there is a story overwrite at this position
+    if(!tile){ //when there was none
+      tile = this.map.giveTile(position);
+    }
+    return tile;
+  }
   /* HANDLE
    * handle takes a action from the avatar as well as an array of parameters.
    * it will return the text result and handle all of the consequences of the action internally.
@@ -26,28 +39,34 @@ export default function Main(config){
           }
           else{
             this.player.move(parameters[0]); //move the virtual player in the given direction
-            let tile = this.map.giveTile(this.player.position); //stores the tile at the players position from the map
-            let direction = this.library.giveString(parameters[0].name); //stores the name of the direction from the library
+            let tile = this.giveTile(this.player.position);
+            this.library.addInformation({direction: this.library.giveString(parameters[0].name), area: tile.name}); //adds specific information
             let entry; //declares entry
             if(tile.happening){ //when there is a happening at the current tile
               switch(tile.happening){ //switches on the happening
                 case 'encounter': //when there is an encounter
                   let enemy = Finder.getObjectInArray(config.enemys,'name',this.map.giveEnemy(tile)); //store the enemy of the encounter, find it within the enemy list using a finder from the utilities
-                  this.combat = new Combat(enemy,this.player); //creates and stores a new combat with the enemy and the player
-                  entry = this.library.giveString('encounter',{ //stores a encounter string from the library based on the given parameters
-                    direction: direction,
-                    area: tile.name,
-                    enemyName: enemy.name,
-                    enemyWeapon: this.combat.setWeapon(), //will set to a weapon of the array of possibile weapons and store the result
-                    enemyArmor: this.combat.setArmor(), //s.o.
-                    enemyBehavior: this.combat.setBehavior(), //s.o.
-                    enemyBattlecry: this.combat.giveBattlecry() //will get a random battlecry
-                  });
+                  this.combat = new Combat(enemy,this.player,false); //creates and stores a new combat with the enemy and the player
+                  this.library.addInformation(this.combat.information); //adds combat information
+                  entry = this.library.giveString('encounter');
                   break;
+                case 'boss': //when there is an encounter
+                  let boss = Finder.getObjectInArray(config.enemys,'name',this.map.giveEnemy(tile)); //store the enemy of the encounter, find it within the enemy list using a finder from the utilities
+                  this.combat = new Combat(boss,this.player,true); //creates and stores a new combat with the enemy and the player
+                  this.library.addInformation(this.combat.information); //adds combat information
+                  entry = this.library.giveString('encounter');
+                  break;
+                case 'goal':
+                let xp = this.story.give('xp')
+                  this.player.changeXP(xp);
+                  this.library.addInformation({epilog: this.story.give('epilog'), xpGain: xp});
+                  this.story.nextChapter();
+                  this.library.addInformation({prolog: this.story.give('prolog')});
+                  entry = this.library.giveString('taskFinished');
               }
             }
             else{ //when there is no happening
-              entry = this.library.giveString('move',{direction: direction, area: tile.name}); //get a string formovement from the library, based on the given parameters
+              entry = this.library.giveString('move'); //get a string formovement from the library, based on the given parameters
             }
             return this.log.makeEntry(entry); //make a log entry and return its content
           }
@@ -62,15 +81,16 @@ export default function Main(config){
           pointClose.change(parameters[0]); //moves it into the looked direction
           let pointFar = new Point(pointClose); //gets the close positon
           pointFar.change(parameters[0]); //moves it into the looked direction
-          let close = this.map.giveTile(pointClose); //stores the tile from the map at close
-          let far = this.map.giveTile(pointFar); //stores the tile from the map at far
+          let close = this.giveTile(pointClose);; //stores the tile from the map at close
+          let far = this.giveTile(pointFar);; //stores the tile from the map at far
           let direction = this.library.giveString(parameters[0].name); //stores the direction string from the library
+          this.library.addInformation({close: close.name, far: far.name, direction: direction});
           let entry; //declares an entry
           if(far.name == close.name){ //when the tiles close and far are the same
-            entry = this.library.giveString('lookSame',{direction: direction, close: close.name}); //gets a specified string from the library
+            entry = this.library.giveString('lookSame'); //gets a specified string from the library
           }
           else{ //when the tiles are different
-            entry = this.library.giveString('lookDifferent',{direction: direction, close: close.name, far: far.name}); //s.o.
+            entry = this.library.giveString('lookDifferent'); //s.o.
           }
           return this.log.makeEntry(entry); //make a log entry and return its content
         }
@@ -83,9 +103,17 @@ export default function Main(config){
       case 'reload':
         if(this.combat){ //when there is a combat
           this.combat.handle(action); //handle the combat virtually
-          let entry1 = this.library.giveString(this.combat.playerAction + 'Player', this.combat.information); //store the string for the player action
-          let entry2 = this.library.giveString(this.combat.enemyAction + 'Enemy', this.combat.information); //store the string for the enemy action
-          if(this.combat.health <= 0){ //when the enemy is beaten
+          this.library.addInformation(this.combat.information);
+          let entry1 = this.library.giveString(this.combat.player.action + 'Player'); //store the string for the player action
+          let entry2 = this.library.giveString(this.combat.enemy.action + 'Enemy'); //store the string for the enemy action
+          if(this.combat.player.action == 'die' || this.combat.enemy.action == 'die'){ //when the enemy is beaten
+            this.player.changeXP(this.combat.enemy.xp);
+            if(this.combat.boss){
+              this.library.addInformation({epilog: this.story.give('epilog')});
+              this.story.nextChapter();
+              this.library.addInformation({prolog: this.story.give('prolog')});
+              entry2 = this.library.giveString('taskFinished'); //store the string for the enemy action
+            }
             this.combat = null; //remove the combat
           }
           return this.log.makeEntry(entry1 + ' ' + entry2); //make a logentry from the joined player and enemy string and return it
@@ -94,6 +122,17 @@ export default function Main(config){
           return this.library.giveString('errorNoCombat'); //return a specific error from the library
         }
         break;
+      case 'task':
+        let task = this.story.giveSummary(this.player.position);
+        if(task){
+          return task;
+        }
+        else{
+          return this.library.giveString('errorNoTasks');
+        }
+        break;
+      case 'info':
+        return this.player.giveInfo();
       default: //when there is a unknown action requested
         return this.library.giveString('errorUnknown'); //return a specific error from the library
     }

@@ -20,6 +20,15 @@ export default function Webconsole(main){
   this.reload = function(){
     return main.handle("reload");
   }
+  this.help = function(){
+    return 'Use player.move(N,E,S,W) to move.\nUse player.look(N,E,S,W) to look around.\nUse player.shoot(), player.reload() and player.dodge() to fight in combat.\nUse player.task() to find out more about your current task.';
+  }
+  this.task = function(){
+    return main.handle('task');
+  }
+  this.info = function(){
+    return main.handle('info');
+  }
   /* These varibales are used to enable input of
    * direction commands without string escape.
    * Player.move(S) instead of player.move("S")
@@ -37,4 +46,5 @@ export default function Webconsole(main){
 
    window.player = this;
    window.p = window.player; //shorthand
+     console.log(main.giveConfigValue('introduction')); //writes the introduction
 }

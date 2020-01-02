@@ -5,15 +5,15 @@ const Tiles = [
     color: 'green',
     happening: null
   },
-  {
-    name: 'forrest with a goblin hut',
-    symbol: 'A',
-    color: 'green',
-    happening: 'encounter',
-    enemys: [
-      'goblin'
-    ]
-  },
+  // {
+  //   name: 'forrest with a goblin hut',
+  //   symbol: 'A',
+  //   color: 'green',
+  //   happening: 'encounter',
+  //   enemys: [
+  //     'goblin'
+  //   ]
+  // },
   {
     name: 'plain',
     symbol: 'E',

@@ -178,7 +178,7 @@ function Direction(directionStringorX, y) {
 
 
 function Point(x, y) {
-  if (x instanceof Point) {
+  if (x instanceof Object) {
     this.x = x.x;
     this.y = x.y;
   } else {
@@ -210,8 +210,13 @@ function Information(type, infos) {
 
 function Library(books) {
   this.books = books;
+  this.informations = {};
 
-  this.giveString = function (type, parameters) {
+  this.addInformation = function (object) {
+    this.informations = Finder.addKeysFromTo(object, this.informations);
+  };
+
+  this.giveString = function (type) {
     var string;
 
     if (!this.books[type]) {
@@ -225,10 +230,7 @@ function Library(books) {
       string = this.books[type];
     }
 
-    if (parameters) {
-      string = this.replacePlaceholders(string, parameters);
-    }
-
+    string = this.replacePlaceholders(string);
     return string;
   };
 
@@ -236,17 +238,15 @@ function Library(books) {
     return array[Math.floor(Math.random() * array.length)];
   };
 
-  this.replacePlaceholders = function (string, parameters) {
-    var _string = string;
-    var keys = Object.keys(parameters);
+  this.replacePlaceholders = function (string) {
+    var informations = Object.keys(this.informations);
 
-    for (var i = 0; i < keys.length; i++) {
-      var newString = _string.replace('{' + keys[i] + '}', parameters[keys[i]]);
-
-      _string = newString;
+    for (var _i = 0, _informations = informations; _i < _informations.length; _i++) {
+      var information = _informations[_i];
+      string = string.replace('{' + information + '}', this.informations[information]);
     }
 
-    return _string;
+    return string;
   };
 }
 
@@ -260,6 +260,23 @@ var Finder = {
     }
 
     return null;
+  },
+
+  /* Will return a random entry from an array*/
+  getRandomEntryInArray: function getRandomEntryInArray(array) {
+    return array[Math.floor(Math.random() * array.length)];
+  },
+
+  /* Will add the keys of the one object to the other and returns the object, the keys were added to*/
+  addKeysFromTo: function addKeysFromTo(from, to) {
+    var keys = Object.keys(from);
+
+    for (var _i2 = 0, _keys = keys; _i2 < _keys.length; _i2++) {
+      var key = _keys[_i2];
+      to[key] = from[key];
+    }
+
+    return to;
   }
 };
 exports.Finder = Finder;
@@ -530,6 +547,8 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports.default = Player;
 
+var _utils = require("../tools/utils.js");
+
 /* The player is stored in a variable and is
  * the only entry point to the code.
  * A set of functions is called from the console.
@@ -538,24 +557,18 @@ exports.default = Player;
  * A avatar object is used to make only the desired functions accessible.
  * The avatar also checks validation and gives back the returns into console.
  */
-function Player(position, health) {
+function Player(config) {
   /* Fields to store information about the player */
-  this.position = position;
-  this.maxHealth = health;
+  this.xp = 0;
+  this.level = 1;
+  this.position = new _utils.Point(config.start.position);
+  this.maxHealth = config.baseHealth;
   this.currentHealth = this.maxHealth;
   this.currentAmmunition = 0;
-  this.weapon = {
-    name: 'flint lock rifle',
-    power: 5,
-    deviance: 2,
-    capacity: 3,
-    sounds: ['makes Peng!', 'does a loud Bauz!', 'does Ssst Bumm!']
-  };
-  this.armor = {
-    name: 'light plate armor',
-    power: 4,
-    sounds: ['lets loose a silent Zeeng', 'aches']
-  };
+  this.weapon = config.start.weapon;
+  this.armor = config.start.armor;
+  this.battlecrys = config.battlecrys;
+  this.deathcrys = config.deathcrys;
   /*function*/
 
   this.move = function (direction) {
@@ -564,151 +577,103 @@ function Player(position, health) {
 
   this.look = function (direction) {//no statchanges
   };
+
+  this.changeXP = function (value) {
+    this.xp += value;
+    this.setLevel();
+  };
+
+  this.setLevel = function () {
+    var level = 1 + Math.floor(Math.sqrt(625 + 100 * this.xp - 25) / 50);
+
+    if (level != this.level) {
+      this.level = level;
+      this.maxHealth = config.baseHealth + this.level * config.healthPerLevel;
+      this.currentHealth = this.maxHealth;
+    }
+  }; //returns a random battlecry
+
+
+  this.giveBattlecry = function () {
+    return _utils.Finder.getRandomEntryInArray(this.battlecrys);
+  }; //returns a random deathcry
+
+
+  this.giveDeathcry = function () {
+    return _utils.Finder.getRandomEntryInArray(this.deathcrys);
+  }; //returns a random weapon sound
+
+
+  this.giveWeaponsound = function () {
+    return _utils.Finder.getRandomEntryInArray(this.weapon.sounds);
+  }; //returns a random armor sound
+
+
+  this.giveArmorsound = function () {
+    return _utils.Finder.getRandomEntryInArray(this.armor.sounds);
+  };
+
+  this.giveInfo = function () {
+    return this.currentHealth + '/' + this.maxHealth + '\nLEVEL: ' + this.level + '\nWEAPON: ' + this.weapon.name + '\nARMOR: ' + this.armor.name;
+  };
 }
-},{}],"src/comp/combat.js":[function(require,module,exports) {
+},{"../tools/utils.js":"src/tools/utils.js"}],"src/comp/enemy.js":[function(require,module,exports) {
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.default = Combat;
+exports.default = Enemy;
 
-function Combat(enemy, player) {
-  this.ticks = 0; //stores the combat progress
+var _utils = require("../tools/utils.js");
 
-  this.health = enemy.health; //stores the current health of the enemy
+function Enemy(enemy) {
+  //stores all properties of the enemy
+  var keys = Object.keys(enemy);
 
-  this.weapon; //stores the weapon used by the enemy
+  for (var _i = 0, _keys = keys; _i < _keys.length; _i++) {
+    var key = _keys[_i];
+    this[key] = enemy[key];
+  } //sets certain properties, that are not defined in the enemy Object
 
-  this.armor; //stores the armor used by the enemy
 
-  this.information = {}; //stores all information about this combat, used for making logentrys from the library
+  this.currentHealth = this.maxHealth; //sets certain propertys, where multiple options exist
 
-  this.setWeapon = function () {
-    var weapon = enemy.weapons[Math.floor(Math.random() * enemy.weapons.length)];
-    this.weapon = weapon;
-    return weapon.name;
-  };
+  this.weapon = this.weapons[Math.floor(Math.random() * this.weapons.length)];
+  this.armor = this.armors[Math.floor(Math.random() * this.armors.length)];
+  this.behavior = this.behaviors[Math.floor(Math.random() * this.behaviors.length)];
 
-  this.setArmor = function () {
-    var armor = enemy.armors[Math.floor(Math.random() * enemy.armors.length)];
-    this.armor = armor;
-    return armor.name;
-  };
+  if (this.weapon.startWith) {
+    this.currentAmmunition = this.weapon.startWith;
+  } else {
+    this.currentAmmunition = 0;
+  } //returns a random battlecry
 
-  this.setBehavior = function () {
-    var behavior = enemy.behaviors[Math.floor(Math.random() * enemy.behaviors.length)];
-    this.pattern = behavior.pattern;
-    return behavior.name;
-  };
 
   this.giveBattlecry = function () {
-    return enemy.battlecrys[Math.floor(Math.random() * enemy.battlecrys.length)];
-  };
+    return _utils.Finder.getRandomEntryInArray(this.battlecrys);
+  }; //returns a random deathcry
 
-  this.handle = function (action) {
-    this.playerAction = action; //stores the player action
 
-    this.enemyAction = this.getEnemyReaction(); //gets and stores the enmy action for the current ticks
+  this.giveDeathcry = function () {
+    return _utils.Finder.getRandomEntryInArray(this.deathcrys);
+  }; //returns a random weapon sound
 
-    this.fight(); //generates the results
 
-    this.ticks++; //ups the ticks
-  };
+  this.giveWeaponsound = function () {
+    return _utils.Finder.getRandomEntryInArray(this.weapon.sounds);
+  }; //returns a random armor sound
 
-  this.fight = function () {
-    if (this.playerAction == 'reload') {
-      //when the player reloads
-      if (player.currentAmmunition < player.weapon.capacity) {
-        //when the weapon isnt full yet
-        player.currentAmmunition++; //up the player ammmo
-      } else {
-        //when the weapon is full
-        this.playerAction = 'reloadFailed'; //set the player action to specific fail
-      }
-    } else if (this.playerAction == 'shoot') {
-      //when the player shoots
-      if (player.currentAmmunition > 0) {
-        //if the player has sufficient ammo
-        if (this.enemyAction == 'dodge') {
-          //when the enemy has dodged
-          this.playerAction = 'shotMissed'; //set playeraction to a specified error
-        } else {
-          //whent the enemy hasnt dodged and the player has sufficient ammo
-          var minDamage = player.weapon.power - player.weapon.deviance;
-          var bonusDamage = Math.round(Math.random() * (player.weapon.deviance * 2));
-          var actualDamage = minDamage + bonusDamage - this.armor.power;
 
-          if (actualDamage < 0) {
-            actualDamage = 0;
-          }
+  this.giveArmorsound = function () {
+    return _utils.Finder.getRandomEntryInArray(this.armor.sounds);
+  }; //gets a action for a certain tick
 
-          this.information.playerDamage = actualDamage;
-          this.health -= actualDamage;
 
-          if (this.health < 0) {
-            this.health = 0;
-          }
+  this.getAction = function (tick, opponent) {
+    var action = this.behavior.pattern.charAt(tick % this.behavior.pattern.length);
 
-          if (this.health == 0) {
-            this.enemyAction = 'die';
-            this.information.enemyDeathcry = enemy.deathcrys[Math.round(Math.random() * enemy.deathcrys.length)];
-          }
-        }
-
-        player.currentAmmunition--;
-      } else {
-        //when the player does not have sufficient ammunition
-        this.playerAction = 'noAmmunition';
-      }
-    }
-
-    if (this.health > 0) {
-      if (this.enemyAction == 'shoot') {
-        if (this.playerAction == 'dodge') {
-          this.enemyAction = 'shotMissed';
-        } else {
-          var _minDamage = this.weapon.power - this.weapon.deviance;
-
-          var _bonusDamage = Math.round(Math.random() * (this.weapon.deviance * 2));
-
-          var _actualDamage = _minDamage + _bonusDamage - player.armor.power;
-
-          if (_actualDamage < 0) {
-            _actualDamage = 0;
-          }
-
-          this.information.enemyDamage = _actualDamage;
-          player.currentHealth -= _actualDamage;
-        }
-      }
-    }
-
-    this.update();
-  };
-
-  this.update = function () {
-    this.information.enemyName = enemy.name;
-    this.information.playerHealth = player.currentHealth;
-    this.information.playerMaxHealth = player.maxHealth;
-    this.information.playerAmmunition = player.currentAmmunition;
-    this.information.playerMaxAmmunition = player.weapon.capacity;
-    this.information.enemyHealth = this.health;
-    this.information.enemyMaxHealth = enemy.health;
-    this.information.playerWeapon = player.weapon.name;
-    this.information.playerWeaponSound = player.weapon.sounds[Math.floor(Math.random() * player.weapon.sounds.length)];
-    this.information.playerArmor = player.armor.name;
-    this.information.playerArmorSound = player.armor.sounds[Math.floor(Math.random() * player.armor.sounds.length)];
-    this.information.enemyWeapon = this.weapon.name;
-    this.information.enemyWeaponSound = this.weapon.sounds[Math.floor(Math.random() * this.weapon.sounds.length)];
-    this.information.enemyArmor = this.armor.name;
-    this.information.enemyArmorSound = this.armor.sounds[Math.floor(Math.random() * this.armor.sounds.length)];
-  };
-
-  this.getEnemyReaction = function () {
-    var short = this.pattern.charAt(this.ticks % this.pattern.length);
-
-    switch (short) {
+    switch (action) {
       case 'R':
         return 'reload';
         break;
@@ -721,11 +686,224 @@ function Combat(enemy, player) {
         return 'shoot';
         break;
 
+      case '*':
+        if (opponent.action == 'dodge') {
+          if (this.currentAmmunition < this.weapon.capacity) {
+            return 'reload';
+          } else {
+            return 'dodge';
+          }
+        } else if (opponent.action == 'shoot') {
+          if (opponent.currentAmmunition > 0) {
+            return 'dodge';
+          } else {
+            if (this.currentAmmunition > 0) {
+              return 'shoot';
+            } else {
+              if (this.currentAmmunition < this.weapon.capacity) {
+                return 'reload';
+              } else {
+                return 'dodge';
+              }
+            }
+          }
+        } else if (opponent.action == 'reload') {
+          if (this.currentAmmunition > 0) {
+            return 'shoot';
+          } else {
+            if (this.currentAmmunition < this.weapon.capacity) {
+              return 'reload';
+            } else {
+              return 'dodge';
+            }
+          }
+        }
+
+        break;
+
       case 'X':
       default:
         return ['reload', 'dodge', 'shoot'][Math.floor(Math.random() * 3)];
         break;
     }
+  };
+}
+},{"../tools/utils.js":"src/tools/utils.js"}],"src/comp/combat.js":[function(require,module,exports) {
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = Combat;
+
+var _enemy = _interopRequireDefault(require("./enemy.js"));
+
+var _utils = require("../tools/utils.js");
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function Combat(enemy, player, boss) {
+  this.boss = boss;
+  this.enemy = new _enemy.default(enemy); //creates a new eneny from the passed enemy
+
+  this.player = player;
+  this.ticks = 0; //stores the combat progress
+
+  this.information = {}; //stores all information about this combat, used for making logentrys from the library
+
+  this.handle = function (action) {
+    this.player.action = action; //stores the player action
+
+    this.enemy.action = this.enemy.getAction(this.ticks, this.player); //gets and stores the enmy action for the current ticks
+
+    this.fight(this.player, this.enemy); //generates the results
+
+    this.fight(this.enemy, this.player);
+    this.update();
+    this.ticks++; //ups the ticks
+  };
+
+  this.fight = function (fighter, opponent) {
+    if (fighter.action == 'reload') {
+      //when the player reloads
+      if (fighter.currentAmmunition < fighter.weapon.capacity) {
+        //when the weapon isnt full yet
+        fighter.currentAmmunition++; //up the player ammmo
+      } else {
+        //when the weapon is full
+        fighter.action = 'reloadFailed'; //set the player action to specific fail
+      }
+    } //shoot
+    else if (fighter.action == 'shoot') {
+        //when the player shoots
+        if (fighter.currentAmmunition > 0) {
+          //if the player has sufficient ammo
+          if (opponent.action == 'dodge') {
+            //when the enemy has dodged
+            fighter.action = 'shotMissed'; //set playeraction to a specified error
+          } else {
+            //whent the enemy hasnt dodged and the player has sufficient ammo
+            var damage = this.calcDamage(fighter.weapon, opponent.armor);
+            fighter instanceof _enemy.default ? this.information.enemyDamage = damage : this.information.playerDamage = damage;
+            opponent.currentHealth -= damage;
+
+            if (opponent.currentHealth < 0) {
+              opponent.currentHealth = 0;
+            }
+
+            if (opponent.currentHealth == 0) {
+              opponent.action = 'die';
+            }
+          }
+
+          fighter.currentAmmunition--;
+        } else {
+          //when the player does not have sufficient ammunition
+          fighter.action = 'noAmmunition';
+        }
+      }
+  };
+
+  this.calcDamage = function (weapon, armor) {
+    var minDamage = weapon.power - weapon.deviance;
+    var bonusDamage = Math.round(Math.random() * (weapon.deviance * 2));
+    var actualDamage = minDamage + bonusDamage - armor.power;
+
+    if (actualDamage < 0) {
+      actualDamage = 0;
+    }
+
+    return actualDamage;
+  };
+
+  this.update = function () {
+    this.information.playerHealth = this.player.currentHealth;
+    this.information.playerMaxHealth = this.player.maxHealth;
+    this.information.playerAmmunition = this.player.currentAmmunition;
+    this.information.playerMaxAmmunition = this.player.weapon.capacity;
+    this.information.playerWeapon = this.player.weapon.name;
+    this.information.playerWeaponSound = this.player.giveWeaponsound();
+    this.information.playerArmor = this.player.armor.name;
+    this.information.playerArmorSound = this.player.giveArmorsound();
+    this.information.playerBattlecry = this.player.giveBattlecry();
+    this.information.playerDeathcry = this.player.giveDeathcry();
+    this.information.enemyName = this.enemy.name;
+    this.information.enemyHealth = this.enemy.currentHealth;
+    this.information.enemyMaxHealth = this.enemy.maxHealth;
+    this.information.enemyAmmunition = this.enemy.currentAmmunition;
+    this.information.enemyMaxAmmunition = this.enemy.weapon.capacity;
+    this.information.enemyWeapon = this.enemy.weapon.name;
+    this.information.enemyWeaponSound = this.enemy.giveWeaponsound();
+    this.information.enemyArmor = this.enemy.armor.name;
+    this.information.enemyArmorSound = this.enemy.giveArmorsound();
+    this.information.enemyBattlecry = this.enemy.giveBattlecry();
+    this.information.enemyDeathcry = this.enemy.giveDeathcry();
+    this.information.enemyBehavior = this.enemy.behavior.name;
+    this.information.xpGain = this.enemy.xp;
+  };
+
+  this.update(); //updates on creation
+}
+},{"./enemy.js":"src/comp/enemy.js","../tools/utils.js":"src/tools/utils.js"}],"src/comp/story.js":[function(require,module,exports) {
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = Story;
+
+function Story(story) {
+  this.chapters = story;
+  this.currentChapter = 0;
+
+  this.giveSummary = function (position) {
+    if (this.currentChapter) {
+      var chapter = this.chapters[this.currentChapter];
+      var title = chapter.title;
+      var description = chapter.description;
+      var goal = this.makeDirections(position, chapter.goal);
+      var xp = chapter.xp;
+      return this.currentChapter + 1 + ' - ' + title + ':\n' + description + '\n' + goal + ' | ' + xp + 'XP';
+    } else {
+      return false;
+    }
+  };
+
+  this.give = function (property) {
+    return this.chapters[this.currentChapter][property];
+  };
+
+  this.nextChapter = function () {
+    if (this.currentChapter < this.chapters.length - 1) {
+      this.currentChapter++;
+    } else {
+      this.currentChapter = false;
+    }
+  };
+
+  this.makeDirections = function (from, to) {
+    var direction = '';
+
+    var _x = to.x - from.x;
+
+    var _y = to.y - from.y;
+
+    _y < 0 ? direction += 'N: ' + Math.abs(_y) : direction += 'S: ' + Math.abs(_y);
+    direction += ' ';
+    _x < 0 ? direction += 'W: ' + Math.abs(_x) : direction += 'E: ' + Math.abs(_x);
+    return direction;
+  };
+
+  this.giveTile = function (position) {
+    for (var tile in this.chapters[this.currentChapter].tiles) {
+      var _tile = this.chapters[this.currentChapter].tiles[tile];
+
+      if (_tile.x == position.x && _tile.y == position.y) {
+        return _tile;
+      }
+    }
+
+    return false;
   };
 }
 },{}],"src/comp/main.js":[function(require,module,exports) {
@@ -744,6 +922,8 @@ var _player = _interopRequireDefault(require("./player.js"));
 
 var _combat = _interopRequireDefault(require("./combat.js"));
 
+var _story = _interopRequireDefault(require("./story.js"));
+
 var _utils = require("../tools/utils.js");
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
@@ -754,18 +934,35 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 function Main(config) {
   this.log = new _log.default(); //creates and stores a new Log
 
-  this.player = new _player.default(new _utils.Point(0, 0), 20); //creates and stores a new virtual player with starting position and health
+  this.player = new _player.default(config.player); //creates and stores a new virtual player with starting position and health
 
   this.map = new _map.default(3105, config.tiles); //creates and stores a new map with a seed and a set of tiles from the config
 
   this.library = new _utils.Library(config.library); //creates and stores a new library with a set of books to read from, straight from the config
 
+  this.story = new _story.default(config.story);
   this.combat; //creates the combat variable which is used to handle combats. Empty means no combat at the moment
 
+  this.giveConfigValue = function (value) {
+    return config[value];
+  }; //will return the tile at a certain position, looks for overwrites first
+
+
+  this.giveTile = function (position) {
+    var tile = this.story.giveTile(position); //if there is a story overwrite at this position
+
+    if (!tile) {
+      //when there was none
+      tile = this.map.giveTile(position);
+    }
+
+    return tile;
+  };
   /* HANDLE
    * handle takes a action from the avatar as well as an array of parameters.
    * it will return the text result and handle all of the consequences of the action internally.
    */
+
 
   this.handle = function (action, parameters) {
     switch (action) {
@@ -780,9 +977,11 @@ function Main(config) {
           } else {
             this.player.move(parameters[0]); //move the virtual player in the given direction
 
-            var tile = this.map.giveTile(this.player.position); //stores the tile at the players position from the map
-
-            var direction = this.library.giveString(parameters[0].name); //stores the name of the direction from the library
+            var tile = this.giveTile(this.player.position);
+            this.library.addInformation({
+              direction: this.library.giveString(parameters[0].name),
+              area: tile.name
+            }); //adds specific information
 
             var entry; //declares entry
 
@@ -795,30 +994,41 @@ function Main(config) {
                   var enemy = _utils.Finder.getObjectInArray(config.enemys, 'name', this.map.giveEnemy(tile)); //store the enemy of the encounter, find it within the enemy list using a finder from the utilities
 
 
-                  this.combat = new _combat.default(enemy, this.player); //creates and stores a new combat with the enemy and the player
+                  this.combat = new _combat.default(enemy, this.player, false); //creates and stores a new combat with the enemy and the player
 
-                  entry = this.library.giveString('encounter', {
-                    //stores a encounter string from the library based on the given parameters
-                    direction: direction,
-                    area: tile.name,
-                    enemyName: enemy.name,
-                    enemyWeapon: this.combat.setWeapon(),
-                    //will set to a weapon of the array of possibile weapons and store the result
-                    enemyArmor: this.combat.setArmor(),
-                    //s.o.
-                    enemyBehavior: this.combat.setBehavior(),
-                    //s.o.
-                    enemyBattlecry: this.combat.giveBattlecry() //will get a random battlecry
+                  this.library.addInformation(this.combat.information); //adds combat information
 
-                  });
+                  entry = this.library.giveString('encounter');
                   break;
+
+                case 'boss':
+                  //when there is an encounter
+                  var boss = _utils.Finder.getObjectInArray(config.enemys, 'name', this.map.giveEnemy(tile)); //store the enemy of the encounter, find it within the enemy list using a finder from the utilities
+
+
+                  this.combat = new _combat.default(boss, this.player, true); //creates and stores a new combat with the enemy and the player
+
+                  this.library.addInformation(this.combat.information); //adds combat information
+
+                  entry = this.library.giveString('encounter');
+                  break;
+
+                case 'goal':
+                  var xp = this.story.give('xp');
+                  this.player.changeXP(xp);
+                  this.library.addInformation({
+                    epilog: this.story.give('epilog'),
+                    xpGain: xp
+                  });
+                  this.story.nextChapter();
+                  this.library.addInformation({
+                    prolog: this.story.give('prolog')
+                  });
+                  entry = this.library.giveString('taskFinished');
               }
             } else {
               //when there is no happening
-              entry = this.library.giveString('move', {
-                direction: direction,
-                area: tile.name
-              }); //get a string formovement from the library, based on the given parameters
+              entry = this.library.giveString('move'); //get a string formovement from the library, based on the given parameters
             }
 
             return this.log.makeEntry(entry); //make a log entry and return its content
@@ -842,29 +1052,29 @@ function Main(config) {
 
           pointFar.change(parameters[0]); //moves it into the looked direction
 
-          var close = this.map.giveTile(pointClose); //stores the tile from the map at close
+          var close = this.giveTile(pointClose);
+          ; //stores the tile from the map at close
 
-          var far = this.map.giveTile(pointFar); //stores the tile from the map at far
+          var far = this.giveTile(pointFar);
+          ; //stores the tile from the map at far
 
-          var _direction = this.library.giveString(parameters[0].name); //stores the direction string from the library
+          var direction = this.library.giveString(parameters[0].name); //stores the direction string from the library
 
+          this.library.addInformation({
+            close: close.name,
+            far: far.name,
+            direction: direction
+          });
 
           var _entry; //declares an entry
 
 
           if (far.name == close.name) {
             //when the tiles close and far are the same
-            _entry = this.library.giveString('lookSame', {
-              direction: _direction,
-              close: close.name
-            }); //gets a specified string from the library
+            _entry = this.library.giveString('lookSame'); //gets a specified string from the library
           } else {
             //when the tiles are different
-            _entry = this.library.giveString('lookDifferent', {
-              direction: _direction,
-              close: close.name,
-              far: far.name
-            }); //s.o.
+            _entry = this.library.giveString('lookDifferent'); //s.o.
           }
 
           return this.log.makeEntry(_entry); //make a log entry and return its content
@@ -883,12 +1093,26 @@ function Main(config) {
           //when there is a combat
           this.combat.handle(action); //handle the combat virtually
 
-          var entry1 = this.library.giveString(this.combat.playerAction + 'Player', this.combat.information); //store the string for the player action
+          this.library.addInformation(this.combat.information);
+          var entry1 = this.library.giveString(this.combat.player.action + 'Player'); //store the string for the player action
 
-          var entry2 = this.library.giveString(this.combat.enemyAction + 'Enemy', this.combat.information); //store the string for the enemy action
+          var entry2 = this.library.giveString(this.combat.enemy.action + 'Enemy'); //store the string for the enemy action
 
-          if (this.combat.health <= 0) {
+          if (this.combat.player.action == 'die' || this.combat.enemy.action == 'die') {
             //when the enemy is beaten
+            this.player.changeXP(this.combat.enemy.xp);
+
+            if (this.combat.boss) {
+              this.library.addInformation({
+                epilog: this.story.give('epilog')
+              });
+              this.story.nextChapter();
+              this.library.addInformation({
+                prolog: this.story.give('prolog')
+              });
+              entry2 = this.library.giveString('taskFinished'); //store the string for the enemy action
+            }
+
             this.combat = null; //remove the combat
           }
 
@@ -900,6 +1124,20 @@ function Main(config) {
 
         break;
 
+      case 'task':
+        var task = this.story.giveSummary(this.player.position);
+
+        if (task) {
+          return task;
+        } else {
+          return this.library.giveString('errorNoTasks');
+        }
+
+        break;
+
+      case 'info':
+        return this.player.giveInfo();
+
       default:
         //when there is a unknown action requested
         return this.library.giveString('errorUnknown');
@@ -907,7 +1145,7 @@ function Main(config) {
     }
   };
 }
-},{"./map.js":"src/comp/map.js","./log.js":"src/comp/log.js","./player.js":"src/comp/player.js","./combat.js":"src/comp/combat.js","../tools/utils.js":"src/tools/utils.js"}],"src/config/en/tiles.js":[function(require,module,exports) {
+},{"./map.js":"src/comp/map.js","./log.js":"src/comp/log.js","./player.js":"src/comp/player.js","./combat.js":"src/comp/combat.js","./story.js":"src/comp/story.js","../tools/utils.js":"src/tools/utils.js"}],"src/config/en/tiles.js":[function(require,module,exports) {
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -919,13 +1157,16 @@ var Tiles = [{
   symbol: 'A',
   color: 'green',
   happening: null
-}, {
-  name: 'forrest with a goblin hut',
-  symbol: 'A',
-  color: 'green',
-  happening: 'encounter',
-  enemys: ['goblin']
-}, {
+}, // {
+//   name: 'forrest with a goblin hut',
+//   symbol: 'A',
+//   color: 'green',
+//   happening: 'encounter',
+//   enemys: [
+//     'goblin'
+//   ]
+// },
+{
   name: 'plain',
   symbol: 'E',
   color: 'grey',
@@ -960,23 +1201,28 @@ var Library = {
   errorMoveInCombat: 'You are fighting, do not try to flee!',
   errorNoCombat: 'You are currently not in a fight.',
   errorNoValidDirection: 'It seems that the direction you are trying to move to is non existent.',
+  errorNoTasks: 'There are currently no tasks available.',
   north: 'north',
   east: 'east',
   south: 'south',
   west: 'west',
   move: ['You move to the {direction} into a {area}.', 'You move in {direction}ern direction, entering a {area} shortly after.', 'You start moving into the {direction}. You enter a {area}.'],
-  encounter: ["You move to the {direction} into a {area}. You are immedeatly attacked by a {enemyBehavior} {enemyName} in {enemyArmor}, wielding a {enemyWeapon}. The enemy shouts: '{enemyBattlecry}' while hurdling at you!"],
+  encounter: ["You move to the {direction} into a {area}. You are immedeatly attacked by a {enemyBehavior} {enemyName} in a {enemyArmor}, wielding a {enemyWeapon}. The enemy shouts: '{enemyBattlecry}' while hurdling at you!"],
+  taskFinished: ['{epilog}. You have gained {xpGain}XP. {prolog}'],
   dodgePlayer: ["You [{playerHealth}/{playerMaxHealth}] throw yourself into cover."],
   reloadPlayer: ["You [{playerHealth}/{playerMaxHealth}] put a round into your {playerWeapon} [{playerAmmunition}/{playerMaxAmmunition}]."],
   reloadFailedPlayer: ['You try tro cramp another shot into your already full {playerWeapon} [{playerAmmunition}/{playerMaxAmmunition}].'],
   shootPlayer: ["You [{playerHealth}/{playerMaxHealth}] fire your {playerWeapon} [{playerAmmunition}/{playerMaxAmmunition}] and it {playerWeaponSound},dealing a whopping {playerDamage} points of damage to your enemy - his {enemyArmor} {enemyArmorSound}."],
   shotMissedPlayer: ["You [{playerHealth}/{playerMaxHealth}] fire your {playerWeapon} [{playerAmmunition}/{playerMaxAmmunition}], which {playerWeaponSound}, but you miss!"],
   noAmmunitionPlayer: ['You [{playerHealth}/{playerMaxHealth}] try to fire your unloaded {playerWeapon} [{playerAmmunition}/{playerMaxAmmunition}] and unsurprisingly fail to do so!'],
+  diePlayer: ["The opposing {enemyName} mortally wounded you. You ache in pain, shout your last: '{playerDeathcry}' and sink to the ground."],
   dodgeEnemy: ["The enemy {enemyName} [{enemyHealth}/{enemyMaxHealth}] lunges behind a rock."],
   reloadEnemy: ['The enemy {enemyName} [{enemyHealth}/{enemyMaxHealth}] reloads his {enemyWeapon}.'],
+  reloadFailedEnemy: ['Your enemy [{enemyHealth}/{enemyMaxHealth}] tries to load another shot, but the {enemyWeapon} is already fully loaded.'],
   shootEnemy: ['The opposing {enemyName} [{enemyHealth}/{enemyMaxHealth}] fires his {enemyWeapon}, which {enemyWeaponSound}, hurting you badly with {enemyDamage} points of damage. Your {playerArmor} {playerArmorSound}.'],
-  shotMissedEnemy: ['The opposing {enemyName} misses you slightly with his {enemyWeapon}.'],
-  dieEnemy: ["You wounded the opposing {enemyName} [{enemyHealth}/{enemyMaxHealth}] badly with your {playerWeapon}. He sinks to the ground, mortally wounded, shouting in agony: '{enemyDeathcry}'."],
+  shotMissedEnemy: ['The opposing {enemyName} [{enemyHealth}/{enemyMaxHealth}] misses you slightly with his {enemyWeapon}.'],
+  noAmmunitionEnemy: ['Your enemy [{enemyHealth}/{enemyMaxHealth}] has no shots left but still tries to shoot, stupid...'],
+  dieEnemy: ["You wounded the opposing {enemyName} [{enemyHealth}/{enemyMaxHealth}] badly with your {playerWeapon}. He sinks to the ground, mortally wounded, shouting in agony: '{enemyDeathcry}'. You have gained {xpGain}XP"],
   lookDifferent: ['You look to the {direction}. You see a {close} upclose and a {far} in the distance.', 'You look in {direction}ern direction. Infront of you there is a {close}, a {far} is further away.', 'You start looking into the {direction}. You gaze upon a {far} in the distance while standing infront of a {close}.'],
   lookSame: ['You look to the {direction}. You see a {close} that continues in the distance.', 'You look in {direction}ern direction. Infront of you there is a {close}, which continues in the distance.', 'You start looking into the {direction}. A {close} stretches up to the horizon.']
 };
@@ -991,7 +1237,8 @@ Object.defineProperty(exports, "__esModule", {
 exports.default = void 0;
 var Enemys = [{
   name: "goblin",
-  health: 10,
+  maxHealth: 10,
+  xp: 10,
   battlecrys: ['Die you filthy bugger!', 'I will delife you, pest!', 'eat my ass, son of a female dog!'],
   deathcrys: ['This was foretold in the ancient murals...', 'Tell my kids that I love them!', 'I will be be back!'],
   armors: [{
@@ -1005,15 +1252,16 @@ var Enemys = [{
   }],
   weapons: [{
     name: 'short bow',
-    power: 5,
+    power: 10,
     deviance: 3,
     capacity: 3,
     sounds: ['does Shhhhhh', 'sounds Sssst', 'makes a Oioioioiong sound']
   }, {
     name: 'slingshot',
-    power: 4,
+    power: 10,
     deviance: 1,
     capacity: 5,
+    startWith: 1,
     sounds: ['does Ploing', 'makes Pheeew', 'does a Donk']
   }],
   behaviors: [{
@@ -1021,13 +1269,142 @@ var Enemys = [{
     pattern: 'RRSS'
   }, {
     name: 'chill',
-    pattern: 'RHHSXX'
+    pattern: 'RDDSXX'
   }, {
     name: 'smart',
     pattern: 'RHHSH'
   }]
+}, {
+  name: "goblin leader",
+  maxHealth: 1,
+  xp: 100,
+  battlecrys: ['Die you filthy bugger!', 'I will delife you, pest!', 'eat my ass, son of a female dog!'],
+  deathcrys: ['This was foretold in the ancient murals...', 'Tell my kids that I love them!', 'I will be be back!'],
+  armors: [{
+    name: 'light armor',
+    power: 1,
+    sounds: ['krinkles slightly', 'makes prrt', 'sounds a knckrknck']
+  }],
+  weapons: [{
+    name: 'short bow',
+    power: 1,
+    deviance: 3,
+    capacity: 3,
+    sounds: ['does Shhhhhh', 'sounds Sssst', 'makes a Oioioioiong sound']
+  }],
+  behaviors: [{
+    name: 'aggressive',
+    pattern: 'R'
+  }]
+}, {
+  name: "Ghost of the old King",
+  maxHealth: 5,
+  battlecrys: ['Die you filthy bugger!', 'I will delife you, pest!', 'eat my ass, son of a female dog!'],
+  deathcrys: ['This was foretold in the ancient murals...', 'Tell my kids that I love them!', 'I will be be back!'],
+  armors: [{
+    name: 'golden chainmail',
+    power: 5,
+    sounds: ['does a Pling']
+  }],
+  weapons: [{
+    name: 'giant crossbow',
+    power: 7,
+    deviance: 0,
+    capacity: 1,
+    sounds: ['Shhhhhh']
+  }],
+  behaviors: [{
+    name: 'awakened',
+    pattern: 'R'
+  }]
 }];
 var _default = Enemys;
+exports.default = _default;
+},{}],"src/config/en/player.js":[function(require,module,exports) {
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = void 0;
+var Player = {
+  baseHealth: 20,
+  healthPerLevel: 5,
+  start: {
+    position: {
+      x: 0,
+      y: 0
+    },
+    weapon: {
+      type: 'weapon',
+      name: 'flint lock rifle',
+      power: 5,
+      deviance: 2,
+      capacity: 3,
+      sounds: ['makes Peng!', 'does a loud Bauz!', 'does Ssst Bumm!']
+    },
+    armor: {
+      type: 'armor',
+      name: 'light plate armor',
+      power: 4,
+      sounds: ['lets loose a silent Zeeng', 'aches']
+    }
+  },
+  battlecrys: ['Engarde!', 'I will wreck you!'],
+  deathcrys: ['Ahhhhhhh', 'I took an arrow to the knee!']
+};
+var _default = Player;
+exports.default = _default;
+},{}],"src/config/en/story.js":[function(require,module,exports) {
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = void 0;
+var Story = [{
+  title: 'The beginning',
+  prolog: 'The prolog of the beginning.',
+  epilog: 'The epilog of the begining',
+  description: 'The description of the beginning',
+  xp: 10,
+  loot: {
+    type: 'weapon',
+    name: 'flint lock pistols',
+    power: 7,
+    deviance: 7,
+    capacity: 2,
+    sounds: ['Peng!', 'Bauz!', 'Bumm!']
+  },
+  goal: {
+    x: 1,
+    y: 0
+  },
+  tiles: [{
+    name: 'goblin fortress',
+    happening: 'boss',
+    enemys: ['goblin leader'],
+    x: 1,
+    y: 0
+  }]
+}, {
+  title: 'The ending',
+  prolog: 'The prolog of the ending.',
+  epilog: 'The epilog of the ending',
+  description: 'The description of the ending',
+  xp: 50,
+  goal: {
+    x: 2,
+    y: 1
+  },
+  tiles: [{
+    name: 'unholy portal',
+    happening: 'goal',
+    x: 2,
+    y: 1
+  }]
+}];
+var _default = Story;
 exports.default = _default;
 },{}],"src/config/en/config.js":[function(require,module,exports) {
 "use strict";
@@ -1043,21 +1420,30 @@ var _library = _interopRequireDefault(require("./library.js"));
 
 var _enemys = _interopRequireDefault(require("./enemys.js"));
 
+var _player = _interopRequireDefault(require("./player.js"));
+
+var _story = _interopRequireDefault(require("./story.js"));
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 //imports the object which holds all tiles for the map
 //imports the object which holds all strings for the library
 //imports the object that holds all enemyobject for combat
+//imports the object that holds all enemyobject for combat
 var Config = {
   //creates a config object which will store all of the imported fields and will be passed to the main
   language: "en",
+  introduction: 'Here you could read some fancy introduction. Use player.help() for more information.',
+  endcredits: 'So this is how the story ends.\nMade with CMLRPG',
+  story: _story.default,
+  player: _player.default,
   tiles: _tiles.default,
   library: _library.default,
   enemys: _enemys.default
 };
 var _default = Config;
 exports.default = _default;
-},{"./tiles.js":"src/config/en/tiles.js","./library.js":"src/config/en/library.js","./enemys.js":"src/config/en/enemys.js"}],"src/avatars/webconsole.js":[function(require,module,exports) {
+},{"./tiles.js":"src/config/en/tiles.js","./library.js":"src/config/en/library.js","./enemys.js":"src/config/en/enemys.js","./player.js":"src/config/en/player.js","./story.js":"src/config/en/story.js"}],"src/avatars/webconsole.js":[function(require,module,exports) {
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -1091,6 +1477,18 @@ function Webconsole(main) {
   this.reload = function () {
     return main.handle("reload");
   };
+
+  this.help = function () {
+    return 'Use player.move(N,E,S,W) to move.\nUse player.look(N,E,S,W) to look around.\nUse player.shoot(), player.reload() and player.dodge() to fight in combat.\nUse player.task() to find out more about your current task.';
+  };
+
+  this.task = function () {
+    return main.handle('task');
+  };
+
+  this.info = function () {
+    return main.handle('info');
+  };
   /* These varibales are used to enable input of
    * direction commands without string escape.
    * Player.move(S) instead of player.move("S")
@@ -1110,6 +1508,8 @@ function Webconsole(main) {
   window.No = window.Nein = window.no = window.nein = false;
   window.player = this;
   window.p = window.player; //shorthand
+
+  console.log(main.giveConfigValue('introduction')); //writes the introduction
 }
 },{"../tools/utils.js":"src/tools/utils.js"}],"node_modules/babel-register/lib/browser.js":[function(require,module,exports) {
 "use strict";
@@ -9172,7 +9572,7 @@ var parent = module.bundle.parent;
 if ((!parent || !parent.isParcelRequire) && typeof WebSocket !== 'undefined') {
   var hostname = "" || location.hostname;
   var protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-  var ws = new WebSocket(protocol + '://' + hostname + ':' + "49749" + '/');
+  var ws = new WebSocket(protocol + '://' + hostname + ':' + "53951" + '/');
 
   ws.onmessage = function (event) {
     checkedAssets = {};

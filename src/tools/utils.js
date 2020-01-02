@@ -38,7 +38,7 @@ export function Direction(directionStringorX,y){
  * constructor can be called with another point instead of x to create a duplicate of it.
  */
 export function Point(x,y){
-  if(x instanceof Point){
+  if(x instanceof Object){
     this.x = x.x;
     this.y = x.y;
   }
@@ -67,7 +67,11 @@ export function Information(type,infos){
 
 export function Library(books){
   this.books = books;
-  this.giveString = function(type,parameters){
+  this.informations = {};
+  this.addInformation = function(object){
+    this.informations = Finder.addKeysFromTo(object,this.informations);
+  }
+  this.giveString = function(type){
     let string;
     if(!this.books[type]){ //when there is no parameter for this
       string ="There are no words to express what just happened!"
@@ -78,22 +82,18 @@ export function Library(books){
     else{ //whe there is only one string
       string = this.books[type];
     }
-    if(parameters){
-      string = this.replacePlaceholders(string,parameters);
-    }
+    string = this.replacePlaceholders(string);
     return string;
   }
   this.selectString = function(array){
     return array[Math.floor(Math.random() * array.length)];
   }
-  this.replacePlaceholders = function(string,parameters){
-    let _string = string;
-    let keys = Object.keys(parameters);
-    for(let i = 0; i < keys.length; i++){
-    let newString = _string.replace('{' + keys[i] + '}',parameters[keys[i]]);
-      _string = newString;
+  this.replacePlaceholders = function(string){
+    let informations = Object.keys(this.informations);
+    for(let information of informations){
+      string = string.replace('{' + information + '}',this.informations[information]);
     }
-    return _string;
+    return string;
   }
 }
 
@@ -106,5 +106,17 @@ export let Finder = {
       }
     }
     return null;
+  },
+  /* Will return a random entry from an array*/
+  getRandomEntryInArray: function(array){
+    return array[Math.floor(Math.random() * array.length)];
+  },
+  /* Will add the keys of the one object to the other and returns the object, the keys were added to*/
+  addKeysFromTo: function(from,to){
+    let keys = Object.keys(from);
+    for(let key of keys){
+      to[key] = from[key];
+    }
+    return to;
   }
 }

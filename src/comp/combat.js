@@ -1,122 +1,86 @@
-export default function Combat(enemy,player){
+import Enemy from './enemy.js';
+import {Finder} from '../tools/utils.js';
+
+export default function Combat(enemy,player,boss){
+  this.boss = boss;
+  this.enemy = new Enemy(enemy); //creates a new eneny from the passed enemy
+  this.player = player;
   this.ticks = 0; //stores the combat progress
-  this.health = enemy.health; //stores the current health of the enemy
-  this.weapon; //stores the weapon used by the enemy
-  this.armor; //stores the armor used by the enemy
   this.information = {}; //stores all information about this combat, used for making logentrys from the library
-  this.setWeapon = function(){
-    let weapon = enemy.weapons[Math.floor(Math.random() * enemy.weapons.length)];
-    this.weapon = weapon;
-    return weapon.name;
-  }
-  this.setArmor = function(){
-    let armor = enemy.armors[Math.floor(Math.random() * enemy.armors.length)];
-    this.armor = armor;
-    return armor.name;
-  }
-  this.setBehavior = function(){
-    let behavior = enemy.behaviors[Math.floor(Math.random() * enemy.behaviors.length)];
-    this.pattern = behavior.pattern;
-    return behavior.name;
-  }
-  this.giveBattlecry = function(){
-    return enemy.battlecrys[Math.floor(Math.random() * enemy.battlecrys.length)];
-  }
   this.handle = function(action){
-    this.playerAction = action; //stores the player action
-    this.enemyAction = this.getEnemyReaction(); //gets and stores the enmy action for the current ticks
-    this.fight(); //generates the results
+    this.player.action = action; //stores the player action
+    this.enemy.action = this.enemy.getAction(this.ticks, this.player); //gets and stores the enmy action for the current ticks
+    this.fight(this.player,this.enemy); //generates the results
+    this.fight(this.enemy,this.player);
+    this.update();
     this.ticks++; //ups the ticks
   }
-  this.fight = function(){
-    if(this.playerAction == 'reload'){ //when the player reloads
-      if(player.currentAmmunition < player.weapon.capacity){ //when the weapon isnt full yet
-        player.currentAmmunition++; //up the player ammmo
+  this.fight = function(fighter,opponent){
+    if(fighter.action == 'reload'){ //when the player reloads
+      if(fighter.currentAmmunition < fighter.weapon.capacity){ //when the weapon isnt full yet
+        fighter.currentAmmunition++; //up the player ammmo
       }
       else{ //when the weapon is full
-        this.playerAction = 'reloadFailed'; //set the player action to specific fail
+        fighter.action = 'reloadFailed'; //set the player action to specific fail
       }
     }
-    else if(this.playerAction == 'shoot'){ //when the player shoots
-      if(player.currentAmmunition > 0){ //if the player has sufficient ammo
-        if(this.enemyAction == 'dodge'){ //when the enemy has dodged
-          this.playerAction = 'shotMissed'; //set playeraction to a specified error
+    //shoot
+    else if(fighter.action == 'shoot'){ //when the player shoots
+      if(fighter.currentAmmunition > 0){ //if the player has sufficient ammo
+        if(opponent.action == 'dodge'){ //when the enemy has dodged
+          fighter.action = 'shotMissed'; //set playeraction to a specified error
         }
         else{ //whent the enemy hasnt dodged and the player has sufficient ammo
-          let minDamage = player.weapon.power - player.weapon.deviance;
-          let bonusDamage = Math.round(Math.random() * (player.weapon.deviance * 2));
-          let actualDamage = minDamage + bonusDamage - this.armor.power;
-          if(actualDamage < 0){
-            actualDamage = 0;
+          let damage = this.calcDamage(fighter.weapon,opponent.armor);
+          fighter instanceof Enemy ? this.information.enemyDamage = damage : this.information.playerDamage = damage;
+          opponent.currentHealth -= damage;
+          if(opponent.currentHealth < 0){
+            opponent.currentHealth = 0;
           }
-          this.information.playerDamage = actualDamage;
-          this.health -= actualDamage;
-          if(this.health < 0){
-            this.health = 0;
-          }
-          if(this.health == 0){
-            this.enemyAction = 'die';
-            this.information.enemyDeathcry = enemy.deathcrys[Math.round(Math.random() * enemy.deathcrys.length)];
+          if(opponent.currentHealth == 0){
+            opponent.action = 'die';
           }
         }
-        player.currentAmmunition--;
+        fighter.currentAmmunition--;
       }
       else{ //when the player does not have sufficient ammunition
-        this.playerAction = 'noAmmunition';
+        fighter.action = 'noAmmunition';
       }
     }
-    if(this.health > 0){
-      if(this.enemyAction == 'shoot'){
-        if(this.playerAction == 'dodge'){
-          this.enemyAction = 'shotMissed';
-        }
-        else{
-          let minDamage = this.weapon.power - this.weapon.deviance;
-          let bonusDamage = Math.round(Math.random() * (this.weapon.deviance * 2));
-          let actualDamage = minDamage + bonusDamage - player.armor.power;
-          if(actualDamage < 0){
-            actualDamage = 0;
-          }
-          this.information.enemyDamage = actualDamage;
-          player.currentHealth -= actualDamage;
-        }
-      }
+  }
+  this.calcDamage = function(weapon,armor){
+    let minDamage = weapon.power - weapon.deviance;
+    let bonusDamage = Math.round(Math.random() * (weapon.deviance * 2));
+    let actualDamage = minDamage + bonusDamage - armor.power;
+    if(actualDamage < 0){
+      actualDamage = 0;
     }
-    this.update();
+    return actualDamage;
   }
   this.update = function(){
-    this.information.enemyName = enemy.name;
-    this.information.playerHealth = player.currentHealth;
-    this.information.playerMaxHealth = player.maxHealth
-    this.information.playerAmmunition = player.currentAmmunition;
-    this.information.playerMaxAmmunition = player.weapon.capacity;
-    this.information.enemyHealth = this.health;
-    this.information.enemyMaxHealth = enemy.health;
-    this.information.playerWeapon = player.weapon.name;
-    this.information.playerWeaponSound = player.weapon.sounds[Math.floor(Math.random() * player.weapon.sounds.length)];
-    this.information.playerArmor = player.armor.name;
-    this.information.playerArmorSound = player.armor.sounds[Math.floor(Math.random() * player.armor.sounds.length)];
-    this.information.enemyWeapon = this.weapon.name;
-    this.information.enemyWeaponSound = this.weapon.sounds[Math.floor(Math.random() * this.weapon.sounds.length)];
-    this.information.enemyArmor = this.armor.name;
-    this.information.enemyArmorSound = this.armor.sounds[Math.floor(Math.random() * this.armor.sounds.length)];
+    this.information.playerHealth = this.player.currentHealth;
+    this.information.playerMaxHealth = this.player.maxHealth
+    this.information.playerAmmunition = this.player.currentAmmunition;
+    this.information.playerMaxAmmunition = this.player.weapon.capacity;
+    this.information.playerWeapon = this.player.weapon.name;
+    this.information.playerWeaponSound = this.player.giveWeaponsound();
+    this.information.playerArmor = this.player.armor.name;
+    this.information.playerArmorSound = this.player.giveArmorsound();
+    this.information.playerBattlecry = this.player.giveBattlecry();
+    this.information.playerDeathcry = this.player.giveDeathcry();
+    this.information.enemyName = this.enemy.name;
+    this.information.enemyHealth = this.enemy.currentHealth;
+    this.information.enemyMaxHealth = this.enemy.maxHealth;
+    this.information.enemyAmmunition = this.enemy.currentAmmunition;
+    this.information.enemyMaxAmmunition = this.enemy.weapon.capacity;
+    this.information.enemyWeapon = this.enemy.weapon.name;
+    this.information.enemyWeaponSound = this.enemy.giveWeaponsound();
+    this.information.enemyArmor = this.enemy.armor.name;
+    this.information.enemyArmorSound = this.enemy.giveArmorsound();
+    this.information.enemyBattlecry = this.enemy.giveBattlecry();
+    this.information.enemyDeathcry = this.enemy.giveDeathcry();
+    this.information.enemyBehavior = this.enemy.behavior.name;
+    this.information.xpGain = this.enemy.xp;
   }
-  this.getEnemyReaction = function(){
-    let short = this.pattern.charAt(this.ticks % this.pattern.length);
-    switch(short){
-      case 'R':
-        return 'reload';
-        break;
-      case 'D':
-        return 'dodge';
-        break;
-      case 'S':
-        return 'shoot';
-        break;
-      case 'X':
-      default:
-        return ['reload','dodge','shoot'][Math.floor(Math.random() * 3)];
-        break;
-    }
-  }
+  this.update(); //updates on creation
 }

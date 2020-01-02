@@ -1,3 +1,5 @@
+import {Point,Finder} from '../tools/utils.js';
+
 /* The player is stored in a variable and is
  * the only entry point to the code.
  * A set of functions is called from the console.
@@ -6,36 +8,54 @@
  * A avatar object is used to make only the desired functions accessible.
  * The avatar also checks validation and gives back the returns into console.
  */
-export default function Player(position,health){
+export default function Player(config){
     /* Fields to store information about the player */
-    this.position = position;
-    this.maxHealth = health;
+    this.xp = 0;
+    this.level = 1;
+    this.position = new Point(config.start.position);
+    this.maxHealth = config.baseHealth;
     this.currentHealth = this.maxHealth;
     this.currentAmmunition = 0;
-    this.weapon = {
-      name: 'flint lock rifle',
-      power: 5,
-      deviance: 2,
-      capacity: 3,
-      sounds: [
-        'makes Peng!',
-        'does a loud Bauz!',
-        'does Ssst Bumm!'
-      ]
-    }
-    this.armor = {
-      name: 'light plate armor',
-      power: 4,
-      sounds: [
-        'lets loose a silent Zeeng',
-        'aches'
-      ]
-    }
+    this.weapon = config.start.weapon;
+    this.armor = config.start.armor;
+    this.battlecrys = config.battlecrys;
+    this.deathcrys = config.deathcrys;
     /*function*/
     this.move = function(direction){
         this.position.change(direction);
     }
     this.look = function(direction){
         //no statchanges
+    }
+    this.changeXP = function(value){
+      this.xp += value;
+      this.setLevel();
+    }
+    this.setLevel = function(){
+      let level = 1 + Math.floor((Math.sqrt(625+(100 * this.xp)-25)/50));
+      if(level != this.level){
+        this.level = level;
+        this.maxHealth = config.baseHealth + (this.level * config.healthPerLevel);
+        this.currentHealth = this.maxHealth;
+      }
+    }
+    //returns a random battlecry
+    this.giveBattlecry = function(){
+      return Finder.getRandomEntryInArray(this.battlecrys);
+    }
+    //returns a random deathcry
+    this.giveDeathcry = function(){
+      return Finder.getRandomEntryInArray(this.deathcrys);
+    }
+    //returns a random weapon sound
+    this.giveWeaponsound = function(){
+      return Finder.getRandomEntryInArray(this.weapon.sounds);
+    }
+    //returns a random armor sound
+    this.giveArmorsound = function(){
+      return Finder.getRandomEntryInArray(this.armor.sounds);
+    }
+    this.giveInfo = function(){
+      return this.currentHealth + '/' + this.maxHealth + '\nLEVEL: ' + this.level + '\nWEAPON: ' + this.weapon.name + '\nARMOR: ' + this.armor.name;
     }
 }
