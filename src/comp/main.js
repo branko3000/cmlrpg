@@ -14,6 +14,12 @@ export default function Main(config){
   this.map = new Map(3105,config.tiles); //creates and stores a new map with a seed and a set of tiles from the config
   this.library = new Library(config.library); //creates and stores a new library with a set of books to read from, straight from the config
   this.story = new Story(config.story);
+  let information = {};
+  let taskInformation = this.story.giveSummary(this.player.position);
+  let playerInformation = this.player.giveSummary();
+  information = Finder.addKeysFromTo(taskInformation,information);
+  information = Finder.addKeysFromTo(playerInformation,information);
+  this.library.addInformation(information); //to have the player level accesible before the first encounter
   this.combat; //creates the combat variable which is used to handle combats. Empty means no combat at the moment
   this.giveConfigValue = function(value){
     return config[value];
@@ -25,6 +31,23 @@ export default function Main(config){
       tile = this.map.giveTile(position);
     }
     return tile;
+  }
+  this.onTaskGoal = function(){
+    return this.player.position.equals(this.story.give('goal'));
+  }
+  this.nextChapter = function(){
+    let nextChapter = this.story.nextChapter(this.player.position);
+    if(nextChapter){
+      this.library.addInformation({taskProlog: nextChapter.taskProlog});
+    }
+    else{
+      this.library.addInformation({taskProlog: config.endcredits});
+    }
+    let text = this.library.giveString('taskFinished');
+    if(nextChapter){
+      this.library.addInformation(nextChapter);
+    }
+    return text;
   }
   /* HANDLE
    * handle takes a action from the avatar as well as an array of parameters.
@@ -46,24 +69,17 @@ export default function Main(config){
               switch(tile.happening){ //switches on the happening
                 case 'encounter': //when there is an encounter
                   let enemy = Finder.getObjectInArray(config.enemys,'name',this.map.giveEnemy(tile)); //store the enemy of the encounter, find it within the enemy list using a finder from the utilities
-                  this.combat = new Combat(enemy,this.player,false); //creates and stores a new combat with the enemy and the player
+                  this.combat = new Combat(enemy,this.player); //creates and stores a new combat with the enemy and the player
                   this.library.addInformation(this.combat.information); //adds combat information
                   entry = this.library.giveString('encounter');
                   break;
-                case 'boss': //when there is an encounter
-                  let boss = Finder.getObjectInArray(config.enemys,'name',this.map.giveEnemy(tile)); //store the enemy of the encounter, find it within the enemy list using a finder from the utilities
-                  this.combat = new Combat(boss,this.player,true); //creates and stores a new combat with the enemy and the player
-                  this.library.addInformation(this.combat.information); //adds combat information
-                  entry = this.library.giveString('encounter');
-                  break;
-                case 'goal':
-                let xp = this.story.give('xp')
-                  this.player.changeXP(xp);
-                  this.library.addInformation({epilog: this.story.give('epilog'), xpGain: xp});
-                  this.story.nextChapter();
-                  this.library.addInformation({prolog: this.story.give('prolog')});
-                  entry = this.library.giveString('taskFinished');
               }
+            }
+            else if(this.onTaskGoal()){
+              let xp = this.story.give('xp')
+              this.player.changeXP(xp);
+              this.library.addInformation(this.player.giveSummary());
+              entry = this.nextChapter();
             }
             else{ //when there is no happening
               entry = this.library.giveString('move'); //get a string formovement from the library, based on the given parameters
@@ -108,11 +124,9 @@ export default function Main(config){
           let entry2 = this.library.giveString(this.combat.enemy.action + 'Enemy'); //store the string for the enemy action
           if(this.combat.player.action == 'die' || this.combat.enemy.action == 'die'){ //when the enemy is beaten
             this.player.changeXP(this.combat.enemy.xp);
-            if(this.combat.boss){
-              this.library.addInformation({epilog: this.story.give('epilog')});
-              this.story.nextChapter();
-              this.library.addInformation({prolog: this.story.give('prolog')});
-              entry2 = this.library.giveString('taskFinished'); //store the string for the enemy action
+            this.library.addInformation(this.player.giveSummary());
+            if(this.onTaskGoal()){
+              entry2 =  this.nextChapter();//store the string for the enemy action
             }
             this.combat = null; //remove the combat
           }
@@ -125,7 +139,8 @@ export default function Main(config){
       case 'task':
         let task = this.story.giveSummary(this.player.position);
         if(task){
-          return task;
+          this.library.addInformation(task);
+          return this.library.giveString('task');
         }
         else{
           return this.library.giveString('errorNoTasks');

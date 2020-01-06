@@ -17,25 +17,25 @@ const Library = {
     "You move to the {direction} into a {area}. You are immedeatly attacked by a {enemyBehavior} {enemyName} in a {enemyArmor}, wielding a {enemyWeapon}. The enemy shouts: '{enemyBattlecry}' while hurdling at you!",
   ],
   taskFinished: [
-    '{epilog}. You have gained {xpGain}XP. {prolog}'
+    '{taskEpilog} You [{playerLevel} | {playerHealth}/{playerMaxHealth}] have gained {taskXP}XP. {taskProlog}'
   ],
   dodgePlayer: [
     "You [{playerHealth}/{playerMaxHealth}] throw yourself into cover."
   ],
   reloadPlayer: [
-    "You [{playerHealth}/{playerMaxHealth}] put a round into your {playerWeapon} [{playerAmmunition}/{playerMaxAmmunition}]."
+    "You [{playerLevel} | {playerHealth}/{playerMaxHealth}] put a round into your {playerWeapon} [{playerWeaponDamage} | {playerAmmunition}/{playerMaxAmmunition}]."
   ],
   reloadFailedPlayer: [
-    'You try tro cramp another shot into your already full {playerWeapon} [{playerAmmunition}/{playerMaxAmmunition}].'
+    'You [{playerLevel} | {playerHealth}/{playerMaxHealth}] try tro cramp another shot into your already full {playerWeapon} [{playerAmmunition}/{playerMaxAmmunition}].'
   ],
   shootPlayer: [
-    "You [{playerHealth}/{playerMaxHealth}] fire your {playerWeapon} [{playerAmmunition}/{playerMaxAmmunition}] and it {playerWeaponSound},dealing a whopping {playerDamage} points of damage to your enemy - his {enemyArmor} {enemyArmorSound}."
+    "You [{playerLevel} | {playerHealth}/{playerMaxHealth}] fire your {playerWeapon} [{playerAmmunition}/{playerMaxAmmunition}] and it does a {playerWeaponSound}, dealing a whopping {playerDamage} points of damage to your enemy - his {enemyArmor} {enemyArmorSound}s."
   ],
   shotMissedPlayer: [
-    "You [{playerHealth}/{playerMaxHealth}] fire your {playerWeapon} [{playerAmmunition}/{playerMaxAmmunition}], which {playerWeaponSound}, but you miss!"
+    "You [[{playerLevel} | {playerHealth}/{playerMaxHealth}] fire your {playerWeapon} [{playerAmmunition}/{playerMaxAmmunition}], which {playerWeaponSound}s, but you miss!"
   ],
   noAmmunitionPlayer: [
-    'You [{playerHealth}/{playerMaxHealth}] try to fire your unloaded {playerWeapon} [{playerAmmunition}/{playerMaxAmmunition}] and unsurprisingly fail to do so!'
+    'You [{playerLevel} | {playerHealth}/{playerMaxHealth}] try to fire your unloaded {playerWeapon} [{playerAmmunition}/{playerMaxAmmunition}] and unsurprisingly fail to do so!'
   ],
   diePlayer: [
     "The opposing {enemyName} mortally wounded you. You ache in pain, shout your last: '{playerDeathcry}' and sink to the ground."
@@ -50,7 +50,7 @@ const Library = {
     'Your enemy [{enemyHealth}/{enemyMaxHealth}] tries to load another shot, but the {enemyWeapon} is already fully loaded.'
   ],
   shootEnemy: [
-    'The opposing {enemyName} [{enemyHealth}/{enemyMaxHealth}] fires his {enemyWeapon}, which {enemyWeaponSound}, hurting you badly with {enemyDamage} points of damage. Your {playerArmor} {playerArmorSound}.'
+    'The opposing {enemyName} [{enemyHealth}/{enemyMaxHealth}] fires his {enemyWeapon}with a load {enemyWeaponSound}, hurting you badly with {enemyDamage} points of damage. Your {playerArmor} makes a {playerArmorSound}.'
   ],
   shotMissedEnemy: [
     'The opposing {enemyName} [{enemyHealth}/{enemyMaxHealth}] misses you slightly with his {enemyWeapon}.'
@@ -70,6 +70,12 @@ const Library = {
     'You look to the {direction}. You see a {close} that continues in the distance.',
     'You look in {direction}ern direction. Infront of you there is a {close}, which continues in the distance.',
     'You start looking into the {direction}. A {close} stretches up to the horizon.'
+  ],
+  task: [
+      'Chapter {taskNumber} - {taskTitle}:\n{taskDescription}\n{taskDirections} - {taskXP}XP'
+  ],
+  info: [
+      '{playerLevel} | {playerHealth} / {playerMaxHealth}\n{playerWeapon}: {playerWeaponDamage} | {playerAmmunition} / {playerMaxAmmunition}\n{playerArmor}: {playerArmorPower}'
   ]
 }
 export default Library;

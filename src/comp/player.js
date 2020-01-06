@@ -39,6 +39,18 @@ export default function Player(config){
         this.currentHealth = this.maxHealth;
       }
     }
+    this.giveSummary = function(){
+        return {
+            playerLevel: this.level,
+            playerHealth: this.currentHealth,
+            playerMaxHealth: this.maxHealth,
+            playerAmmunition: this.currentAmmunition,
+            playerMaxAmmunition: this.weapon.capacity,
+            playerWeapon: this.weapon.name,
+            playerWeaponDamage: (this.weapon.power - this.weapon.deviance) + '-' + (this.weapon.power + this.weapon.deviance),
+            playerArmor: this.armor.name
+        }
+    }
     //returns a random battlecry
     this.giveBattlecry = function(){
       return Finder.getRandomEntryInArray(this.battlecrys);

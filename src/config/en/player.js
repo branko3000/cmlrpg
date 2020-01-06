@@ -6,13 +6,13 @@ const Player = {
     weapon: {
       type: 'weapon',
       name: 'flint lock rifle',
-      power: 5,
+      power: 10,
       deviance: 2,
       capacity: 3,
       sounds: [
-        'makes Peng!',
-        'does a loud Bauz!',
-        'does Ssst Bumm!'
+        'Peng',
+        'Bauz',
+        'Ssst Bumm'
       ]
     },
     armor: {
@@ -20,8 +20,8 @@ const Player = {
       name: 'light plate armor',
       power: 4,
       sounds: [
-        'lets loose a silent Zeeng',
-        'aches'
+        'Zeeng',
+        'Ziing'
       ]
     }
   },

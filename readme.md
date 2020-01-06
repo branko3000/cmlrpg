@@ -1,10 +1,24 @@
 # CMLRPG
 
-Commandline RPG is a tool to create custom, Dungeons and Dragons style RPGs in a webconsole or something similar.
+Commandline RPG is a tool to create custom, Dungeons and Dragons style RPGs in a webconsole or something similar. It works using a virtual avatar that handles the input and output that a wrapper generates from a set of custom config files.
+
+[TOC]
 
 ## Usage
 
-To use the CMLRPG within your enviroment you first need to write a Avatar for your environment. It should be stored in `src/avatars/*.js`. You then need to call this Avatar from within the `index.js` file by importing it,  using the `import` function. This is done in the following way:
+1. Clone this repo
+2. Open the file located at `src/index.js`  with a editor of your choice.
+3. Change the value of the `import Config from './config/*/*.js';` to a config file of your choice from the `src/config` folder.
+4. Change the value of the `import Avatar from './avatar/*.js';` to a avatar file of your choice from the `src/avatar` folder.
+5. Run a JavaScript bundler of your choice to bundle all scripts into a singular script.
+6. Add this script you your site with a `<script></script>` tag.
+7. Call `new CMLRPG();` from anywhere (the avatar object will be stored in a global `CMLRPG` variable ) to start the game.
+
+## Customize
+
+This project is meant to be used to build custom RPGs. The possibilities are endless, as you are able to define all text used yourself. So any setting, any language is possibile. There is no need to have the RPG happen in the console only. Any way of getting a text based input and presenting it as a text based output can be used. Textarea, push messages, text to speech - your choice. Please be so kind to add any new *Avatars* and configs to the repo to have it accessible to all users.
+
+To use the CMLRPG within your enviroment you first need to write a Avatar for your environment. It should be stored in `src/avatars/*.js`. Read more on how to write an avatar in the [Documentation]() section if this document. You then need to call this Avatar from within the `index.js` file by importing it,  using the `import` function. This is done in the following way:
 
 ```js
 import Avatar from './avatars/*.js'; //load the avatar for your enviroment
@@ -154,10 +168,12 @@ The following variables can be used from within a string pattern:
 - area - the name of the tile the player is currently standing on.
 - playerHealth - the current health of the player.
 - playerMaxHealth - the maximum amount of health the player can have.
+- playerLevel - the current level of the player
 - playerAmmunition - the current amount of ammunition the player has loaded.
 - playerMaxAmmunition - the capacity of the weapon the player is currently holding.
 - playerWeapon - the name of the weapon the player has currently equipped.
 - playerWeaponSound - a random sound from all of the possibile sounds the currently equipped weapon of the player can make.
+- playerWeaponDamage - the damage range of the players weapon
 - playerArmor - the name of the armor the player has currently equipped.
 - playerArmorSound - a sound the players armor can make
 - enemyName - the name of the enemy the player has fought last, during a fight it is the name of the current enemy.
@@ -167,7 +183,7 @@ The following variables can be used from within a string pattern:
 - enemyHealth - the current amount of health of the enemy. 0 when there is no combat happening at the moment.
 - enemyMaxHealth - the maximum amount of health the enemy can have.
 - xpGain - the amount of XP the current enemy is worth/the current goal yields.
-- enemyWeapon, enemyWeaponSound, enemyArmor, enemyArmorSound - equivalent to the values for player, just specific to the enemy instead of the player.
+- enemyWeapon, enemyWeaponSound, enemyWeaponDamage, enemyArmor, enemyArmorSound, enemyAmmunition, enemyMaxAmmunition - equivalent to the values for player, just specific to the enemy instead of the player.
 
 ### Enemys.js
 
@@ -217,7 +233,7 @@ export default Enemys;
 
 ```
 
-All of the arrays be extended to any length. Which value is used is determined by random. Weapon, armor, behavior and deathcry are decided on creation, the battlecry and all sounds are selected new everytime they are used. The name field is to be matched by the `enemy: []` array from a tile object in the `Tile.js` file. 
+All of the arrays be extended to any length. Which value is used is determined by random. Weapon, armor, behavior and deathcry are decided on creation, the battlecry and all sounds are selected new everytime they are used. The name field is to be matched by the `enemy: []` array from a tile object in the `Tile.js` file.
 
 The behavior field contains different behaviors for this enemy. Each behavior has a `name:`, which is accessible within library strings using `{enemyBehavior}` and a `pattern:` which is used to determine the enemys action in a combat. Each letter in the patternstring represents one of 4 actions. Which letter is used depends on the progress of the combat. The letter is selected based on the current combat round. So in the first combat round the first letter is used as a behavior, in the second round the second string and so on. When the rounds exceed the length of the string, the pattern is looped. So the longer the pattern the less likely the player will get used to it. You can use this to add different difficulties to your enemys. Each letter represents the following behavior:
 
@@ -407,9 +423,11 @@ Each item needs a `name` and `description` field, which is used in the loot dial
 
 ## Documentation
 
-In the following I will explain a bit more about certain aspects of the game.
+Here I have documented how certain aspects work on the more technical site. This is interesting when you are customizing a RPG but especially important when writing your own avatar.
 
-### Interaction
+### Avatars
+
+
 
 
 
@@ -429,4 +447,3 @@ The damage that is dealt is determined by three values: the power of the weapon,
 The higher the deviance, the less reliable the weapon is, but the more damage could be dealt.
 
 When the health of one combatant falls below 0 his action is still resolved (so a killed enemy could still hit you in the round you've killed him, thats how gun's work!). Afterwards the fight ends. When the player dies the game ends. A killed enemy will yield XP.
-

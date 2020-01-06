@@ -5,31 +5,21 @@ const Tiles = [
     color: 'green',
     happening: null
   },
-  // {
-  //   name: 'forrest with a goblin hut',
-  //   symbol: 'A',
-  //   color: 'green',
-  //   happening: 'encounter',
-  //   enemys: [
-  //     'goblin'
-  //   ]
-  // },
+  {
+    name: 'forrest with a goblin hut',
+    symbol: 'A',
+    color: 'green',
+    happening: 'encounter',
+    enemys: [
+      'goblin'
+    ]
+  },
   {
     name: 'plain',
-    symbol: 'E',
-    color: 'grey',
     happening: null
   },
   {
     name: 'mountain',
-    symbol: 'M',
-    color: 'darkgrey',
-    happening: null
-  },
-  {
-    name: 'desert',
-    symbol: 'O',
-    color: 'yellow',
     happening: null
   },
   {
@@ -37,6 +27,15 @@ const Tiles = [
     symbol: 'X',
     color: 'black',
     happening: null
+  },
+  {
+    name: 'swamp with totally no goblins in it',
+    symbol: 'X',
+    color: 'black',
+    happening: 'encounter',
+    enemys: [
+      'goblin','goblin','goblin maniac'
+    ]
   }
 ]
 

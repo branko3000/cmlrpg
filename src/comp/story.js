@@ -1,14 +1,10 @@
 export default function Story(story){
   this.chapters = story;
-  this.currentChapter = 0;
-  this.giveSummary = function(position){
-    if(this.currentChapter){
+  this.currentChapter = 0; //has to be 1, otherwise 0 will be interpreted as false when asking if(this.currentChapter)
+  this.giveSummary = function(position){ //position has to be passed to generate directions
+    if(this.currentChapter < this.chapters.length){ //when the current chapter is not a valid number, false for instance
       let chapter = this.chapters[this.currentChapter];
-      let title = chapter.title;
-      let description = chapter.description;
-      let goal = this.makeDirections(position, chapter.goal);
-      let xp = chapter.xp;
-      return (this.currentChapter + 1) + ' - ' + title + ':\n' + description + '\n' + goal + ' | ' + xp + 'XP';
+      return {taskProlog: chapter.prolog, taskEpilog: chapter.epilog, taskNumber: (this.currentChapter+1), taskTitle: chapter.title, taskDescription: chapter.description, taskDirections: this.makeDirections(position, chapter.goal), taskXP: chapter.xp};
     }
     else{
       return false;
@@ -17,13 +13,9 @@ export default function Story(story){
   this.give = function(property){
     return this.chapters[this.currentChapter][property];
   }
-  this.nextChapter = function(){
-    if(this.currentChapter < (this.chapters.length -1)){
-      this.currentChapter++;
-    }
-    else{
-      this.currentChapter = false;
-    }
+  this.nextChapter = function(position){ //needs position for generating directions
+    this.currentChapter++;
+    return this.giveSummary((position))
   }
   this.makeDirections = function(from,to){
     let direction = '';

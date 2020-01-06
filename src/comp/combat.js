@@ -64,6 +64,7 @@ export default function Combat(enemy,player,boss){
     this.information.playerMaxAmmunition = this.player.weapon.capacity;
     this.information.playerWeapon = this.player.weapon.name;
     this.information.playerWeaponSound = this.player.giveWeaponsound();
+    this.information.playerWeaponDamage = (this.player.weapon.power - this.player.weapon.deviance) + '-' + (this.player.weapon.power + this.player.weapon.deviance);
     this.information.playerArmor = this.player.armor.name;
     this.information.playerArmorSound = this.player.giveArmorsound();
     this.information.playerBattlecry = this.player.giveBattlecry();
@@ -75,6 +76,7 @@ export default function Combat(enemy,player,boss){
     this.information.enemyMaxAmmunition = this.enemy.weapon.capacity;
     this.information.enemyWeapon = this.enemy.weapon.name;
     this.information.enemyWeaponSound = this.enemy.giveWeaponsound();
+    this.information.enemyWeaponDamage = (this.enemy.weapon.power - this.enemy.weapon.deviance) + '-' + (this.enemy.weapon.power + this.enemy.weapon.deviance);
     this.information.enemyArmor = this.enemy.armor.name;
     this.information.enemyArmorSound = this.enemy.giveArmorsound();
     this.information.enemyBattlecry = this.enemy.giveBattlecry();

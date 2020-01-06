@@ -16,28 +16,28 @@ const Enemys = [
     armors: [
       {
         name: 'some pieces of hide',
-        power: 3,
+        power: 2,
         sounds: [
-          'does Krrrrt',
-          'makes Ritsch Ratsch',
-          'does a Brrrrt'
+          'Krrrrt',
+          'Ritsch Ratsch',
+          'Brrrrt'
         ]
       },
       {
         name: 'light armor',
-        power: 1,
+        power: 4,
         sounds: [
-          'krinkles slightly',
-          'makes prrt',
-          'sounds a knckrknck'
+          'Kling',
+          'Ding',
+          'Pling'
         ]
       }
     ],
     weapons: [
       {
         name: 'short bow',
-        power: 10,
-        deviance: 3,
+        power: 3,
+        deviance: 1,
         capacity: 3,
         sounds: [
           'does Shhhhhh',
@@ -47,8 +47,8 @@ const Enemys = [
       },
       {
         name: 'slingshot',
-        power: 10,
-        deviance: 1,
+        power: 4,
+        deviance: 3,
         capacity: 5,
         startWith: 1,
         sounds: [
@@ -69,14 +69,14 @@ const Enemys = [
       },
       {
         name: 'smart',
-        pattern: 'RHHSH'
+        pattern: 'RHSR*'
       }
     ]
   },
   {
     name: "goblin leader",
-    maxHealth: 1,
-    xp: 100,
+    maxHealth: 15,
+    xp: 25,
     battlecrys: [
       'Die you filthy bugger!',
       'I will delife you, pest!',
@@ -89,72 +89,156 @@ const Enemys = [
     ],
     armors: [
       {
-        name: 'light armor',
-        power: 1,
+        name: 'wrecked plate armor',
+        power: 2,
         sounds: [
-          'krinkles slightly',
-          'makes prrt',
-          'sounds a knckrknck'
+          'Dong',
+          'Bong',
+          'Klonk'
+        ]
+      },
+      {
+        name: 'light armor',
+        power: 4,
+        sounds: [
+          'Kling',
+          'Ding',
+          'Pling'
         ]
       }
     ],
     weapons: [
       {
-        name: 'short bow',
-        power: 1,
-        deviance: 3,
-        capacity: 3,
+        name: 'long bow',
+        power: 5,
+        deviance: 1,
+        capacity: 2,
         sounds: [
-          'does Shhhhhh',
-          'sounds Sssst',
-          'makes a Oioioioiong sound'
+          'Shhhhhh',
+          'Sssst',
+          'Oioioioiong'
+        ]
+      },
+      {
+        name: 'flint lock pistol',
+        power: 6,
+        deviance: 4,
+        capacity: 2,
+        startWith: 2,
+        sounds: [
+          'Puff Puff',
+          'Puff Peng',
+          'Peng Peng'
         ]
       }
     ],
     behaviors: [
       {
         name: 'aggressive',
-        pattern: 'R'
+        pattern: 'RRSS'
+      },
+      {
+        name: 'chill',
+        pattern: 'RDDSXX'
+      },
+      {
+        name: 'smart',
+        pattern: 'RHSR*'
       }
     ]
   },
   {
-    name: "Ghost of the old King",
-    maxHealth: 5,
+    name: "goblin maniac",
+    maxHealth: 20,
+    xp: 20,
     battlecrys: [
-      'Die you filthy bugger!',
-      'I will delife you, pest!',
-      'eat my ass, son of a female dog!'
+      'Wulullu!',
+      'Ackacka Rackackack!',
+      'Yehah!'
     ],
     deathcrys: [
-      'This was foretold in the ancient murals...',
-      'Tell my kids that I love them!',
-      'I will be be back!'
+      'Bye Bye',
+      'Cio Bella!',
+      'Arividerci'
     ],
     armors: [
       {
-        name: 'golden chainmail',
-        power: 5,
+        name: 'some tatters',
+        power: 0,
         sounds: [
-          'does a Pling'
+          'Rripp',
+          'Ssst',
+          '*rip*'
         ]
       }
     ],
     weapons: [
       {
-        name: 'giant crossbow',
+        name: 'flamethrower',
         power: 7,
-        deviance: 0,
-        capacity: 1,
+        deviance: 7,
+        capacity: 100,
+        startWith: 1,
         sounds: [
-          'Shhhhhh'
+          '*burn*',
+          '*die*',
+          '*love the smell*'
         ]
       }
     ],
     behaviors: [
       {
-        name: 'awakened',
-        pattern: 'R'
+        name: 'aggressive',
+        pattern: 'RRSS'
+      },
+      {
+        name: 'chill',
+        pattern: 'RDDSXX'
+      },
+      {
+        name: 'smart',
+        pattern: 'RHSR*'
+      }
+    ]
+  },
+  {
+    name: "King Henry",
+    maxHealth: 25,
+    xp: 100,
+    battlecrys: [
+      'You will totally not kiss my daughter goodnight, punk!'
+    ],
+    deathcrys: [
+      'Kiss me goodnight, punk!'
+    ],
+    armors: [
+      {
+        name: 'golden plate armor',
+        power: 5,
+        sounds: [
+          'Pling',
+          'Plong'
+        ]
+      }
+    ],
+    weapons: [
+      {
+        name: 'crossbow',
+        power: 6,
+        deviance: 2,
+        capacity: 1,
+        startWith: 1,
+        sounds: [
+          'Zziing',
+          'Pheew',
+          'Ssshhht'
+        ]
+      }
+    ],
+    behaviors: [
+      {
+        name: 'enraged',
+        pattern: 'SHR*'
       }
     ]
   }

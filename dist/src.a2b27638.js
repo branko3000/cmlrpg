@@ -196,6 +196,10 @@ function Point(x, y) {
       this.y += direction.y * multiplier;
     }
   };
+
+  this.equals = function (point) {
+    return this.x == point.x && this.y == point.y;
+  };
 }
 /* A information is used to pass text based information around
  * @param type - string: the type of this information, what is it about?
@@ -591,6 +595,19 @@ function Player(config) {
       this.maxHealth = config.baseHealth + this.level * config.healthPerLevel;
       this.currentHealth = this.maxHealth;
     }
+  };
+
+  this.giveSummary = function () {
+    return {
+      playerLevel: this.level,
+      playerHealth: this.currentHealth,
+      playerMaxHealth: this.maxHealth,
+      playerAmmunition: this.currentAmmunition,
+      playerMaxAmmunition: this.weapon.capacity,
+      playerWeapon: this.weapon.name,
+      playerWeaponDamage: this.weapon.power - this.weapon.deviance + '-' + (this.weapon.power + this.weapon.deviance),
+      playerArmor: this.armor.name
+    };
   }; //returns a random battlecry
 
 
@@ -823,6 +840,7 @@ function Combat(enemy, player, boss) {
     this.information.playerMaxAmmunition = this.player.weapon.capacity;
     this.information.playerWeapon = this.player.weapon.name;
     this.information.playerWeaponSound = this.player.giveWeaponsound();
+    this.information.playerWeaponDamage = this.player.weapon.power - this.player.weapon.deviance + '-' + (this.player.weapon.power + this.player.weapon.deviance);
     this.information.playerArmor = this.player.armor.name;
     this.information.playerArmorSound = this.player.giveArmorsound();
     this.information.playerBattlecry = this.player.giveBattlecry();
@@ -834,6 +852,7 @@ function Combat(enemy, player, boss) {
     this.information.enemyMaxAmmunition = this.enemy.weapon.capacity;
     this.information.enemyWeapon = this.enemy.weapon.name;
     this.information.enemyWeaponSound = this.enemy.giveWeaponsound();
+    this.information.enemyWeaponDamage = this.enemy.weapon.power - this.enemy.weapon.deviance + '-' + (this.enemy.weapon.power + this.enemy.weapon.deviance);
     this.information.enemyArmor = this.enemy.armor.name;
     this.information.enemyArmorSound = this.enemy.giveArmorsound();
     this.information.enemyBattlecry = this.enemy.giveBattlecry();
@@ -854,16 +873,22 @@ exports.default = Story;
 
 function Story(story) {
   this.chapters = story;
-  this.currentChapter = 0;
+  this.currentChapter = 0; //has to be 1, otherwise 0 will be interpreted as false when asking if(this.currentChapter)
 
   this.giveSummary = function (position) {
-    if (this.currentChapter) {
+    //position has to be passed to generate directions
+    if (this.currentChapter < this.chapters.length) {
+      //when the current chapter is not a valid number, false for instance
       var chapter = this.chapters[this.currentChapter];
-      var title = chapter.title;
-      var description = chapter.description;
-      var goal = this.makeDirections(position, chapter.goal);
-      var xp = chapter.xp;
-      return this.currentChapter + 1 + ' - ' + title + ':\n' + description + '\n' + goal + ' | ' + xp + 'XP';
+      return {
+        taskProlog: chapter.prolog,
+        taskEpilog: chapter.epilog,
+        taskNumber: this.currentChapter + 1,
+        taskTitle: chapter.title,
+        taskDescription: chapter.description,
+        taskDirections: this.makeDirections(position, chapter.goal),
+        taskXP: chapter.xp
+      };
     } else {
       return false;
     }
@@ -873,12 +898,10 @@ function Story(story) {
     return this.chapters[this.currentChapter][property];
   };
 
-  this.nextChapter = function () {
-    if (this.currentChapter < this.chapters.length - 1) {
-      this.currentChapter++;
-    } else {
-      this.currentChapter = false;
-    }
+  this.nextChapter = function (position) {
+    //needs position for generating directions
+    this.currentChapter++;
+    return this.giveSummary(position);
   };
 
   this.makeDirections = function (from, to) {
@@ -941,6 +964,13 @@ function Main(config) {
   this.library = new _utils.Library(config.library); //creates and stores a new library with a set of books to read from, straight from the config
 
   this.story = new _story.default(config.story);
+  var information = {};
+  var taskInformation = this.story.giveSummary(this.player.position);
+  var playerInformation = this.player.giveSummary();
+  information = _utils.Finder.addKeysFromTo(taskInformation, information);
+  information = _utils.Finder.addKeysFromTo(playerInformation, information);
+  this.library.addInformation(information); //to have the player level accesible before the first encounter
+
   this.combat; //creates the combat variable which is used to handle combats. Empty means no combat at the moment
 
   this.giveConfigValue = function (value) {
@@ -957,6 +987,32 @@ function Main(config) {
     }
 
     return tile;
+  };
+
+  this.onTaskGoal = function () {
+    return this.player.position.equals(this.story.give('goal'));
+  };
+
+  this.nextChapter = function () {
+    var nextChapter = this.story.nextChapter(this.player.position);
+
+    if (nextChapter) {
+      this.library.addInformation({
+        taskProlog: nextChapter.taskProlog
+      });
+    } else {
+      this.library.addInformation({
+        taskProlog: config.endcredits
+      });
+    }
+
+    var text = this.library.giveString('taskFinished');
+
+    if (nextChapter) {
+      this.library.addInformation(nextChapter);
+    }
+
+    return text;
   };
   /* HANDLE
    * handle takes a action from the avatar as well as an array of parameters.
@@ -994,38 +1050,18 @@ function Main(config) {
                   var enemy = _utils.Finder.getObjectInArray(config.enemys, 'name', this.map.giveEnemy(tile)); //store the enemy of the encounter, find it within the enemy list using a finder from the utilities
 
 
-                  this.combat = new _combat.default(enemy, this.player, false); //creates and stores a new combat with the enemy and the player
+                  this.combat = new _combat.default(enemy, this.player); //creates and stores a new combat with the enemy and the player
 
                   this.library.addInformation(this.combat.information); //adds combat information
 
                   entry = this.library.giveString('encounter');
                   break;
-
-                case 'boss':
-                  //when there is an encounter
-                  var boss = _utils.Finder.getObjectInArray(config.enemys, 'name', this.map.giveEnemy(tile)); //store the enemy of the encounter, find it within the enemy list using a finder from the utilities
-
-
-                  this.combat = new _combat.default(boss, this.player, true); //creates and stores a new combat with the enemy and the player
-
-                  this.library.addInformation(this.combat.information); //adds combat information
-
-                  entry = this.library.giveString('encounter');
-                  break;
-
-                case 'goal':
-                  var xp = this.story.give('xp');
-                  this.player.changeXP(xp);
-                  this.library.addInformation({
-                    epilog: this.story.give('epilog'),
-                    xpGain: xp
-                  });
-                  this.story.nextChapter();
-                  this.library.addInformation({
-                    prolog: this.story.give('prolog')
-                  });
-                  entry = this.library.giveString('taskFinished');
               }
+            } else if (this.onTaskGoal()) {
+              var xp = this.story.give('xp');
+              this.player.changeXP(xp);
+              this.library.addInformation(this.player.giveSummary());
+              entry = this.nextChapter();
             } else {
               //when there is no happening
               entry = this.library.giveString('move'); //get a string formovement from the library, based on the given parameters
@@ -1101,16 +1137,10 @@ function Main(config) {
           if (this.combat.player.action == 'die' || this.combat.enemy.action == 'die') {
             //when the enemy is beaten
             this.player.changeXP(this.combat.enemy.xp);
+            this.library.addInformation(this.player.giveSummary());
 
-            if (this.combat.boss) {
-              this.library.addInformation({
-                epilog: this.story.give('epilog')
-              });
-              this.story.nextChapter();
-              this.library.addInformation({
-                prolog: this.story.give('prolog')
-              });
-              entry2 = this.library.giveString('taskFinished'); //store the string for the enemy action
+            if (this.onTaskGoal()) {
+              entry2 = this.nextChapter(); //store the string for the enemy action
             }
 
             this.combat = null; //remove the combat
@@ -1128,7 +1158,8 @@ function Main(config) {
         var task = this.story.giveSummary(this.player.position);
 
         if (task) {
-          return task;
+          this.library.addInformation(task);
+          return this.library.giveString('task');
         } else {
           return this.library.giveString('errorNoTasks');
         }
@@ -1157,35 +1188,29 @@ var Tiles = [{
   symbol: 'A',
   color: 'green',
   happening: null
-}, // {
-//   name: 'forrest with a goblin hut',
-//   symbol: 'A',
-//   color: 'green',
-//   happening: 'encounter',
-//   enemys: [
-//     'goblin'
-//   ]
-// },
-{
+}, {
+  name: 'forrest with a goblin hut',
+  symbol: 'A',
+  color: 'green',
+  happening: 'encounter',
+  enemys: ['goblin']
+}, {
   name: 'plain',
-  symbol: 'E',
-  color: 'grey',
   happening: null
 }, {
   name: 'mountain',
-  symbol: 'M',
-  color: 'darkgrey',
-  happening: null
-}, {
-  name: 'desert',
-  symbol: 'O',
-  color: 'yellow',
   happening: null
 }, {
   name: 'swamp',
   symbol: 'X',
   color: 'black',
   happening: null
+}, {
+  name: 'swamp with totally no goblins in it',
+  symbol: 'X',
+  color: 'black',
+  happening: 'encounter',
+  enemys: ['goblin', 'goblin', 'goblin maniac']
 }];
 var _default = Tiles;
 exports.default = _default;
@@ -1208,23 +1233,25 @@ var Library = {
   west: 'west',
   move: ['You move to the {direction} into a {area}.', 'You move in {direction}ern direction, entering a {area} shortly after.', 'You start moving into the {direction}. You enter a {area}.'],
   encounter: ["You move to the {direction} into a {area}. You are immedeatly attacked by a {enemyBehavior} {enemyName} in a {enemyArmor}, wielding a {enemyWeapon}. The enemy shouts: '{enemyBattlecry}' while hurdling at you!"],
-  taskFinished: ['{epilog}. You have gained {xpGain}XP. {prolog}'],
+  taskFinished: ['{taskEpilog} You [{playerLevel} | {playerHealth}/{playerMaxHealth}] have gained {taskXP}XP. {taskProlog}'],
   dodgePlayer: ["You [{playerHealth}/{playerMaxHealth}] throw yourself into cover."],
-  reloadPlayer: ["You [{playerHealth}/{playerMaxHealth}] put a round into your {playerWeapon} [{playerAmmunition}/{playerMaxAmmunition}]."],
-  reloadFailedPlayer: ['You try tro cramp another shot into your already full {playerWeapon} [{playerAmmunition}/{playerMaxAmmunition}].'],
-  shootPlayer: ["You [{playerHealth}/{playerMaxHealth}] fire your {playerWeapon} [{playerAmmunition}/{playerMaxAmmunition}] and it {playerWeaponSound},dealing a whopping {playerDamage} points of damage to your enemy - his {enemyArmor} {enemyArmorSound}."],
-  shotMissedPlayer: ["You [{playerHealth}/{playerMaxHealth}] fire your {playerWeapon} [{playerAmmunition}/{playerMaxAmmunition}], which {playerWeaponSound}, but you miss!"],
-  noAmmunitionPlayer: ['You [{playerHealth}/{playerMaxHealth}] try to fire your unloaded {playerWeapon} [{playerAmmunition}/{playerMaxAmmunition}] and unsurprisingly fail to do so!'],
+  reloadPlayer: ["You [{playerLevel} | {playerHealth}/{playerMaxHealth}] put a round into your {playerWeapon} [{playerWeaponDamage} | {playerAmmunition}/{playerMaxAmmunition}]."],
+  reloadFailedPlayer: ['You [{playerLevel} | {playerHealth}/{playerMaxHealth}] try tro cramp another shot into your already full {playerWeapon} [{playerAmmunition}/{playerMaxAmmunition}].'],
+  shootPlayer: ["You [{playerLevel} | {playerHealth}/{playerMaxHealth}] fire your {playerWeapon} [{playerAmmunition}/{playerMaxAmmunition}] and it does a {playerWeaponSound}, dealing a whopping {playerDamage} points of damage to your enemy - his {enemyArmor} {enemyArmorSound}s."],
+  shotMissedPlayer: ["You [[{playerLevel} | {playerHealth}/{playerMaxHealth}] fire your {playerWeapon} [{playerAmmunition}/{playerMaxAmmunition}], which {playerWeaponSound}s, but you miss!"],
+  noAmmunitionPlayer: ['You [{playerLevel} | {playerHealth}/{playerMaxHealth}] try to fire your unloaded {playerWeapon} [{playerAmmunition}/{playerMaxAmmunition}] and unsurprisingly fail to do so!'],
   diePlayer: ["The opposing {enemyName} mortally wounded you. You ache in pain, shout your last: '{playerDeathcry}' and sink to the ground."],
   dodgeEnemy: ["The enemy {enemyName} [{enemyHealth}/{enemyMaxHealth}] lunges behind a rock."],
   reloadEnemy: ['The enemy {enemyName} [{enemyHealth}/{enemyMaxHealth}] reloads his {enemyWeapon}.'],
   reloadFailedEnemy: ['Your enemy [{enemyHealth}/{enemyMaxHealth}] tries to load another shot, but the {enemyWeapon} is already fully loaded.'],
-  shootEnemy: ['The opposing {enemyName} [{enemyHealth}/{enemyMaxHealth}] fires his {enemyWeapon}, which {enemyWeaponSound}, hurting you badly with {enemyDamage} points of damage. Your {playerArmor} {playerArmorSound}.'],
+  shootEnemy: ['The opposing {enemyName} [{enemyHealth}/{enemyMaxHealth}] fires his {enemyWeapon}with a load {enemyWeaponSound}, hurting you badly with {enemyDamage} points of damage. Your {playerArmor} makes a {playerArmorSound}.'],
   shotMissedEnemy: ['The opposing {enemyName} [{enemyHealth}/{enemyMaxHealth}] misses you slightly with his {enemyWeapon}.'],
   noAmmunitionEnemy: ['Your enemy [{enemyHealth}/{enemyMaxHealth}] has no shots left but still tries to shoot, stupid...'],
   dieEnemy: ["You wounded the opposing {enemyName} [{enemyHealth}/{enemyMaxHealth}] badly with your {playerWeapon}. He sinks to the ground, mortally wounded, shouting in agony: '{enemyDeathcry}'. You have gained {xpGain}XP"],
   lookDifferent: ['You look to the {direction}. You see a {close} upclose and a {far} in the distance.', 'You look in {direction}ern direction. Infront of you there is a {close}, a {far} is further away.', 'You start looking into the {direction}. You gaze upon a {far} in the distance while standing infront of a {close}.'],
-  lookSame: ['You look to the {direction}. You see a {close} that continues in the distance.', 'You look in {direction}ern direction. Infront of you there is a {close}, which continues in the distance.', 'You start looking into the {direction}. A {close} stretches up to the horizon.']
+  lookSame: ['You look to the {direction}. You see a {close} that continues in the distance.', 'You look in {direction}ern direction. Infront of you there is a {close}, which continues in the distance.', 'You start looking into the {direction}. A {close} stretches up to the horizon.'],
+  task: ['Chapter {taskNumber} - {taskTitle}:\n{taskDescription}\n{taskDirections} - {taskXP}XP'],
+  info: ['{playerLevel} | {playerHealth} / {playerMaxHealth}\n{playerWeapon}: {playerWeaponDamage} | {playerAmmunition} / {playerMaxAmmunition}\n{playerArmor}: {playerArmorPower}']
 };
 var _default = Library;
 exports.default = _default;
@@ -1243,23 +1270,23 @@ var Enemys = [{
   deathcrys: ['This was foretold in the ancient murals...', 'Tell my kids that I love them!', 'I will be be back!'],
   armors: [{
     name: 'some pieces of hide',
-    power: 3,
-    sounds: ['does Krrrrt', 'makes Ritsch Ratsch', 'does a Brrrrt']
+    power: 2,
+    sounds: ['Krrrrt', 'Ritsch Ratsch', 'Brrrrt']
   }, {
     name: 'light armor',
-    power: 1,
-    sounds: ['krinkles slightly', 'makes prrt', 'sounds a knckrknck']
+    power: 4,
+    sounds: ['Kling', 'Ding', 'Pling']
   }],
   weapons: [{
     name: 'short bow',
-    power: 10,
-    deviance: 3,
+    power: 3,
+    deviance: 1,
     capacity: 3,
     sounds: ['does Shhhhhh', 'sounds Sssst', 'makes a Oioioioiong sound']
   }, {
     name: 'slingshot',
-    power: 10,
-    deviance: 1,
+    power: 4,
+    deviance: 3,
     capacity: 5,
     startWith: 1,
     sounds: ['does Ploing', 'makes Pheeew', 'does a Donk']
@@ -1272,50 +1299,98 @@ var Enemys = [{
     pattern: 'RDDSXX'
   }, {
     name: 'smart',
-    pattern: 'RHHSH'
+    pattern: 'RHSR*'
   }]
 }, {
   name: "goblin leader",
-  maxHealth: 1,
-  xp: 100,
+  maxHealth: 15,
+  xp: 25,
   battlecrys: ['Die you filthy bugger!', 'I will delife you, pest!', 'eat my ass, son of a female dog!'],
   deathcrys: ['This was foretold in the ancient murals...', 'Tell my kids that I love them!', 'I will be be back!'],
   armors: [{
+    name: 'wrecked plate armor',
+    power: 2,
+    sounds: ['Dong', 'Bong', 'Klonk']
+  }, {
     name: 'light armor',
-    power: 1,
-    sounds: ['krinkles slightly', 'makes prrt', 'sounds a knckrknck']
+    power: 4,
+    sounds: ['Kling', 'Ding', 'Pling']
   }],
   weapons: [{
-    name: 'short bow',
-    power: 1,
-    deviance: 3,
-    capacity: 3,
-    sounds: ['does Shhhhhh', 'sounds Sssst', 'makes a Oioioioiong sound']
+    name: 'long bow',
+    power: 5,
+    deviance: 1,
+    capacity: 2,
+    sounds: ['Shhhhhh', 'Sssst', 'Oioioioiong']
+  }, {
+    name: 'flint lock pistol',
+    power: 6,
+    deviance: 4,
+    capacity: 2,
+    startWith: 2,
+    sounds: ['Puff Puff', 'Puff Peng', 'Peng Peng']
   }],
   behaviors: [{
     name: 'aggressive',
-    pattern: 'R'
+    pattern: 'RRSS'
+  }, {
+    name: 'chill',
+    pattern: 'RDDSXX'
+  }, {
+    name: 'smart',
+    pattern: 'RHSR*'
   }]
 }, {
-  name: "Ghost of the old King",
-  maxHealth: 5,
-  battlecrys: ['Die you filthy bugger!', 'I will delife you, pest!', 'eat my ass, son of a female dog!'],
-  deathcrys: ['This was foretold in the ancient murals...', 'Tell my kids that I love them!', 'I will be be back!'],
+  name: "goblin maniac",
+  maxHealth: 20,
+  xp: 20,
+  battlecrys: ['Wulullu!', 'Ackacka Rackackack!', 'Yehah!'],
+  deathcrys: ['Bye Bye', 'Cio Bella!', 'Arividerci'],
   armors: [{
-    name: 'golden chainmail',
-    power: 5,
-    sounds: ['does a Pling']
+    name: 'some tatters',
+    power: 0,
+    sounds: ['Rripp', 'Ssst', '*rip*']
   }],
   weapons: [{
-    name: 'giant crossbow',
+    name: 'flamethrower',
     power: 7,
-    deviance: 0,
-    capacity: 1,
-    sounds: ['Shhhhhh']
+    deviance: 7,
+    capacity: 100,
+    startWith: 1,
+    sounds: ['*burn*', '*die*', '*love the smell*']
   }],
   behaviors: [{
-    name: 'awakened',
-    pattern: 'R'
+    name: 'aggressive',
+    pattern: 'RRSS'
+  }, {
+    name: 'chill',
+    pattern: 'RDDSXX'
+  }, {
+    name: 'smart',
+    pattern: 'RHSR*'
+  }]
+}, {
+  name: "King Henry",
+  maxHealth: 25,
+  xp: 100,
+  battlecrys: ['You will totally not kiss my daughter goodnight, punk!'],
+  deathcrys: ['Kiss me goodnight, punk!'],
+  armors: [{
+    name: 'golden plate armor',
+    power: 5,
+    sounds: ['Pling', 'Plong']
+  }],
+  weapons: [{
+    name: 'crossbow',
+    power: 6,
+    deviance: 2,
+    capacity: 1,
+    startWith: 1,
+    sounds: ['Zziing', 'Pheew', 'Ssshhht']
+  }],
+  behaviors: [{
+    name: 'enraged',
+    pattern: 'SHR*'
   }]
 }];
 var _default = Enemys;
@@ -1338,16 +1413,16 @@ var Player = {
     weapon: {
       type: 'weapon',
       name: 'flint lock rifle',
-      power: 5,
+      power: 10,
       deviance: 2,
       capacity: 3,
-      sounds: ['makes Peng!', 'does a loud Bauz!', 'does Ssst Bumm!']
+      sounds: ['Peng', 'Bauz', 'Ssst Bumm']
     },
     armor: {
       type: 'armor',
       name: 'light plate armor',
       power: 4,
-      sounds: ['lets loose a silent Zeeng', 'aches']
+      sounds: ['Zeeng', 'Ziing']
     }
   },
   battlecrys: ['Engarde!', 'I will wreck you!'],
@@ -1363,45 +1438,69 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports.default = void 0;
 var Story = [{
-  title: 'The beginning',
-  prolog: 'The prolog of the beginning.',
-  epilog: 'The epilog of the begining',
-  description: 'The description of the beginning',
-  xp: 10,
-  loot: {
-    type: 'weapon',
-    name: 'flint lock pistols',
-    power: 7,
-    deviance: 7,
-    capacity: 2,
-    sounds: ['Peng!', 'Bauz!', 'Bumm!']
-  },
+  title: 'The potion',
+  prolog: 'To fight the goblin leader you will need a special toxin. Only then will you be able to hurt with more then just words.',
+  epilog: 'The witch hut disappears right in front of you. The witch gave you a small, surprisingly small bottle, containing a shimmering green solution. Will this be enough to hurt the goblin leader?',
+  description: 'Go to the old witch hut to receive a AGT (Anti-Goblin-Toxin).',
+  xp: 20,
   goal: {
     x: 1,
-    y: 0
+    y: 1
   },
   tiles: [{
-    name: 'goblin fortress',
-    happening: 'boss',
-    enemys: ['goblin leader'],
+    name: 'witch hut',
+    happening: null,
     x: 1,
+    y: 1
+  }, {
+    name: 'kings castle',
+    happening: null,
+    x: 0,
     y: 0
   }]
 }, {
-  title: 'The ending',
-  prolog: 'The prolog of the ending.',
-  epilog: 'The epilog of the ending',
-  description: 'The description of the ending',
+  title: 'The cave',
+  prolog: 'After you have recieved the AGT you turn to pay the goblin leader a visit.',
+  epilog: 'The goblin leader is now nothing more but a bag of meat, bones and a broken ego.',
+  description: 'Find the goblin cave and fight the goblin leader.',
   xp: 50,
   goal: {
-    x: 2,
-    y: 1
+    x: 1,
+    y: -1
   },
   tiles: [{
-    name: 'unholy portal',
-    happening: 'goal',
-    x: 2,
-    y: 1
+    name: 'goblin cave',
+    happening: 'encounter',
+    enemys: ['goblin leader'],
+    x: 1,
+    y: -1
+  }, {
+    name: 'kings castle',
+    happening: null,
+    x: 0,
+    y: 0
+  }]
+}, {
+  title: 'The return',
+  prolog: 'After you have showed the goblins, who is boss you return to the castle to ask the kings daughter out.',
+  epilog: 'He sinks to the ground, looks to his daughter and a tear rolls down his face, as he is aware you wont have mercy on her either.',
+  description: 'Return to the kings castle.',
+  xp: 50,
+  goal: {
+    x: 0,
+    y: 0
+  },
+  tiles: [{
+    name: 'goblin cave',
+    happening: null,
+    x: 1,
+    y: -1
+  }, {
+    name: 'kings castle',
+    happening: 'encounter',
+    enemys: ['King Henry'],
+    x: 0,
+    y: 0
   }]
 }];
 var _default = Story;
@@ -1433,8 +1532,8 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 var Config = {
   //creates a config object which will store all of the imported fields and will be passed to the main
   language: "en",
-  introduction: 'Here you could read some fancy introduction. Use player.help() for more information.',
-  endcredits: 'So this is how the story ends.\nMade with CMLRPG',
+  introduction: 'To show yourself worthy of marrying the (currently hungover) teenage daughter of King Henry the Last, you are tasked with clearing the forrests around the kings castle of goblins. Use player.help() for more information.',
+  endcredits: 'After you have pretty much wrecked the old man, that was so delusional to call himself king you pick up his still comatose daughter from the bed, which is conveniently placed right next to the throne. She is drowsy and salive is dripping on her pillow. You give her a kiss of true love on her slightly open mouth. Shortly after you are charged with sexual assault, as she did not consent to the kiss.\nMade with CMLRPG',
   story: _story.default,
   player: _player.default,
   tiles: _tiles.default,
@@ -9572,7 +9671,7 @@ var parent = module.bundle.parent;
 if ((!parent || !parent.isParcelRequire) && typeof WebSocket !== 'undefined') {
   var hostname = "" || location.hostname;
   var protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-  var ws = new WebSocket(protocol + '://' + hostname + ':' + "53951" + '/');
+  var ws = new WebSocket(protocol + '://' + hostname + ':' + "61487" + '/');
 
   ws.onmessage = function (event) {
     checkedAssets = {};

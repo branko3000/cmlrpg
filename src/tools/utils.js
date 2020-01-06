@@ -55,6 +55,9 @@ export function Point(x,y){
         this.y += (direction.y * multiplier);
     }
   }
+  this.equals = function(point){
+      return (this.x == point.x && this.y == point.y);
+  }
 }
 /* A information is used to pass text based information around
  * @param type - string: the type of this information, what is it about?
