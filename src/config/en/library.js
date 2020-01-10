@@ -75,7 +75,22 @@ const Library = {
       'Chapter {taskNumber} - {taskTitle}:\n{taskDescription}\n{taskDirections} - {taskXP}XP'
   ],
   info: [
-      '{playerLevel} | {playerHealth} / {playerMaxHealth}\n{playerWeapon}: {playerWeaponDamage} | {playerAmmunition} / {playerMaxAmmunition}\n{playerArmor}: {playerArmorPower}'
+      'Lvl. {playerLevel} | {playerHealth}/{playerMaxHealth}\n{playerWeapon}: {playerWeaponPower} | {playerAmmunition} / {playerMaxAmmunition}\n{playerArmor}: {playerArmorPower}'
+  ],
+  itemweapon: [
+    'You have found a {itemName}[{itemPower} | {itemCapacity}]. Use player.touch() to equip it. Use player.info() to view your current equipment.'
+  ],
+  itemarmor: [
+    'You have found a {itemName}[{itemPower}]. Use player.touch() to equip it. Use player.info() to view your current equipment.'
+  ],
+  touchnothing: [
+    'There is nothing to touch.'
+  ],
+  toucharmor: [
+    'You have now equipped a {itemName}[{itemPower}] as your armor.'
+  ],
+  touchweapon: [
+    'You have now equipped a {itemName}[{itemPower} | {itemCapacity}] as your weapon.'
   ]
 }
 export default Library;

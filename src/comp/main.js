@@ -21,6 +21,7 @@ export default function Main(config){
   information = Finder.addKeysFromTo(playerInformation,information);
   this.library.addInformation(information); //to have the player level accesible before the first encounter
   this.combat; //creates the combat variable which is used to handle combats. Empty means no combat at the moment
+  this.loot = null; //will store an item that can be picked up by the player
   this.giveConfigValue = function(value){
     return config[value];
   }
@@ -73,13 +74,29 @@ export default function Main(config){
                   this.library.addInformation(this.combat.information); //adds combat information
                   entry = this.library.giveString('encounter');
                   break;
+                case 'item': //when there is an itemdrop
+                  let items = tile.items;
+                  let _item = Finder.getRandomEntryInArray(items);
+                  let item = Finder.getObjectInArray(config.items,'name',_item);
+                  this.loot = item;
+                  switch(item.type){
+                    case 'armor':
+                      this.library.addInformation({itemName: item.name, itemPower: item.power});
+                      break;
+                    case 'weapon':
+                      let itemDamage = (item.power - item.deviance) + '-' + (item.power + item.deviance);
+                      this.library.addInformation({itemName: item.name, itemPower:  itemDamage, itemCapacity: item.capacity});
+                      break;
+                  }
+                  entry = this.library.giveString('item' + item.type);
+
               }
             }
-            else if(this.onTaskGoal()){
+            if(this.onTaskGoal() && !this.combat){ //when the player is on a task goal and there was no combat started
               let xp = this.story.give('xp')
               this.player.changeXP(xp);
               this.library.addInformation(this.player.giveSummary());
-              entry = this.nextChapter();
+              entry += this.nextChapter();
             }
             else{ //when there is no happening
               entry = this.library.giveString('move'); //get a string formovement from the library, based on the given parameters
@@ -114,6 +131,13 @@ export default function Main(config){
           return this.library.giveString('errorNoValidDirection'); //return a specific error from the library
         }
         break;
+      case 'touch':
+        let type = 'nothing';
+        if(this.loot){
+          type = this.loot.type;
+          this.player.equip(this.loot);
+        }
+        return this.library.giveString('touch' + type);
       case 'dodge': //for any of the fighting actions
       case 'shoot':
       case 'reload':
@@ -147,7 +171,15 @@ export default function Main(config){
         }
         break;
       case 'info':
-        return this.player.giveInfo();
+        this.library.addInformation(this.player.giveSummary());
+        return this.library.giveString('info');
+      case 'log':
+        let entrys = '';
+        for(let i=0;i<this.log.entrys.length;i++){
+          entrys += (i + 1) + ': ' + this.log.entrys[i] + '\n';
+        }
+        return entrys;
+        break;
       default: //when there is a unknown action requested
         return this.library.giveString('errorUnknown'); //return a specific error from the library
     }

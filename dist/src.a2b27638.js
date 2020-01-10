@@ -605,9 +605,14 @@ function Player(config) {
       playerAmmunition: this.currentAmmunition,
       playerMaxAmmunition: this.weapon.capacity,
       playerWeapon: this.weapon.name,
-      playerWeaponDamage: this.weapon.power - this.weapon.deviance + '-' + (this.weapon.power + this.weapon.deviance),
-      playerArmor: this.armor.name
+      playerWeaponPower: this.weapon.power - this.weapon.deviance + '-' + (this.weapon.power + this.weapon.deviance),
+      playerArmor: this.armor.name,
+      playerArmorPower: this.armor.power
     };
+  };
+
+  this.equip = function (item) {
+    this[item.type] = item;
   }; //returns a random battlecry
 
 
@@ -628,10 +633,6 @@ function Player(config) {
 
   this.giveArmorsound = function () {
     return _utils.Finder.getRandomEntryInArray(this.armor.sounds);
-  };
-
-  this.giveInfo = function () {
-    return this.currentHealth + '/' + this.maxHealth + '\nLEVEL: ' + this.level + '\nWEAPON: ' + this.weapon.name + '\nARMOR: ' + this.armor.name;
   };
 }
 },{"../tools/utils.js":"src/tools/utils.js"}],"src/comp/enemy.js":[function(require,module,exports) {
@@ -973,6 +974,8 @@ function Main(config) {
 
   this.combat; //creates the combat variable which is used to handle combats. Empty means no combat at the moment
 
+  this.loot = null; //will store an item that can be picked up by the player
+
   this.giveConfigValue = function (value) {
     return config[value];
   }; //will return the tile at a certain position, looks for overwrites first
@@ -1056,12 +1059,45 @@ function Main(config) {
 
                   entry = this.library.giveString('encounter');
                   break;
+
+                case 'item':
+                  //when there is an itemdrop
+                  var items = tile.items;
+
+                  var _item = _utils.Finder.getRandomEntryInArray(items);
+
+                  var item = _utils.Finder.getObjectInArray(config.items, 'name', _item);
+
+                  this.loot = item;
+
+                  switch (item.type) {
+                    case 'armor':
+                      this.library.addInformation({
+                        itemName: item.name,
+                        itemPower: item.power
+                      });
+                      break;
+
+                    case 'weapon':
+                      var itemDamage = item.power - item.deviance + '-' + (item.power + item.deviance);
+                      this.library.addInformation({
+                        itemName: item.name,
+                        itemPower: itemDamage,
+                        itemCapacity: item.capacity
+                      });
+                      break;
+                  }
+
+                  entry = this.library.giveString('item' + item.type);
               }
-            } else if (this.onTaskGoal()) {
+            }
+
+            if (this.onTaskGoal() && !this.combat) {
+              //when the player is on a task goal and there was no combat started
               var xp = this.story.give('xp');
               this.player.changeXP(xp);
               this.library.addInformation(this.player.giveSummary());
-              entry = this.nextChapter();
+              entry += this.nextChapter();
             } else {
               //when there is no happening
               entry = this.library.giveString('move'); //get a string formovement from the library, based on the given parameters
@@ -1121,6 +1157,16 @@ function Main(config) {
 
         break;
 
+      case 'touch':
+        var type = 'nothing';
+
+        if (this.loot) {
+          type = this.loot.type;
+          this.player.equip(this.loot);
+        }
+
+        return this.library.giveString('touch' + type);
+
       case 'dodge': //for any of the fighting actions
 
       case 'shoot':
@@ -1167,7 +1213,18 @@ function Main(config) {
         break;
 
       case 'info':
-        return this.player.giveInfo();
+        this.library.addInformation(this.player.giveSummary());
+        return this.library.giveString('info');
+
+      case 'log':
+        var entrys = '';
+
+        for (var i = 0; i < this.log.entrys.length; i++) {
+          entrys += i + 1 + ': ' + this.log.entrys[i] + '\n';
+        }
+
+        return entrys;
+        break;
 
       default:
         //when there is a unknown action requested
@@ -1251,7 +1308,12 @@ var Library = {
   lookDifferent: ['You look to the {direction}. You see a {close} upclose and a {far} in the distance.', 'You look in {direction}ern direction. Infront of you there is a {close}, a {far} is further away.', 'You start looking into the {direction}. You gaze upon a {far} in the distance while standing infront of a {close}.'],
   lookSame: ['You look to the {direction}. You see a {close} that continues in the distance.', 'You look in {direction}ern direction. Infront of you there is a {close}, which continues in the distance.', 'You start looking into the {direction}. A {close} stretches up to the horizon.'],
   task: ['Chapter {taskNumber} - {taskTitle}:\n{taskDescription}\n{taskDirections} - {taskXP}XP'],
-  info: ['{playerLevel} | {playerHealth} / {playerMaxHealth}\n{playerWeapon}: {playerWeaponDamage} | {playerAmmunition} / {playerMaxAmmunition}\n{playerArmor}: {playerArmorPower}']
+  info: ['Lvl. {playerLevel} | {playerHealth}/{playerMaxHealth}\n{playerWeapon}: {playerWeaponPower} | {playerAmmunition} / {playerMaxAmmunition}\n{playerArmor}: {playerArmorPower}'],
+  itemweapon: ['You have found a {itemName}[{itemPower} | {itemCapacity}]. Use player.touch() to equip it. Use player.info() to view your current equipment.'],
+  itemarmor: ['You have found a {itemName}[{itemPower}]. Use player.touch() to equip it. Use player.info() to view your current equipment.'],
+  touchnothing: ['There is nothing to touch.'],
+  toucharmor: ['You have now equipped a {itemName}[{itemPower}] as your armor.'],
+  touchweapon: ['You have now equipped a {itemName}[{itemPower} | {itemCapacity}] as your weapon.']
 };
 var _default = Library;
 exports.default = _default;
@@ -1438,6 +1500,23 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports.default = void 0;
 var Story = [{
+  title: 'A new boomstick',
+  prolog: 'Get yourself some boomstick.',
+  epilog: 'You got yourself a new boomstick!',
+  description: 'Go to the weapon maker and get ypurself a boomstick.',
+  xp: 20,
+  goal: {
+    x: -1,
+    y: -1
+  },
+  tiles: [{
+    name: 'weapon maker',
+    happening: 'item',
+    items: ['boomstick', 'heavy armor'],
+    x: -1,
+    y: -1
+  }]
+}, {
   title: 'The potion',
   prolog: 'To fight the goblin leader you will need a special toxin. Only then will you be able to hurt with more then just words.',
   epilog: 'The witch hut disappears right in front of you. The witch gave you a small, surprisingly small bottle, containing a shimmering green solution. Will this be enough to hurt the goblin leader?',
@@ -1505,6 +1584,28 @@ var Story = [{
 }];
 var _default = Story;
 exports.default = _default;
+},{}],"src/config/en/items.js":[function(require,module,exports) {
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.default = void 0;
+var Items = [{
+  type: 'weapon',
+  name: 'boomstick',
+  power: 8,
+  deviance: 8,
+  capacity: 2,
+  sounds: ['Peng', 'Bauz', 'Ssst Bumm']
+}, {
+  type: 'armor',
+  name: 'heavy armor',
+  power: 7,
+  sounds: ['Donk', 'Denk']
+}];
+var _default = Items;
+exports.default = _default;
 },{}],"src/config/en/config.js":[function(require,module,exports) {
 "use strict";
 
@@ -1523,6 +1624,8 @@ var _player = _interopRequireDefault(require("./player.js"));
 
 var _story = _interopRequireDefault(require("./story.js"));
 
+var _items = _interopRequireDefault(require("./items.js"));
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 //imports the object which holds all tiles for the map
@@ -1538,11 +1641,12 @@ var Config = {
   player: _player.default,
   tiles: _tiles.default,
   library: _library.default,
-  enemys: _enemys.default
+  enemys: _enemys.default,
+  items: _items.default
 };
 var _default = Config;
 exports.default = _default;
-},{"./tiles.js":"src/config/en/tiles.js","./library.js":"src/config/en/library.js","./enemys.js":"src/config/en/enemys.js","./player.js":"src/config/en/player.js","./story.js":"src/config/en/story.js"}],"src/avatars/webconsole.js":[function(require,module,exports) {
+},{"./tiles.js":"src/config/en/tiles.js","./library.js":"src/config/en/library.js","./enemys.js":"src/config/en/enemys.js","./player.js":"src/config/en/player.js","./story.js":"src/config/en/story.js","./items.js":"src/config/en/items.js"}],"src/avatars/webconsole.js":[function(require,module,exports) {
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -1565,6 +1669,10 @@ function Webconsole(main) {
     return main.handle("look", [direction]);
   };
 
+  this.touch = function () {
+    return main.handle('touch');
+  };
+
   this.dodge = function () {
     return main.handle("dodge");
   };
@@ -1578,7 +1686,7 @@ function Webconsole(main) {
   };
 
   this.help = function () {
-    return 'Use player.move(N,E,S,W) to move.\nUse player.look(N,E,S,W) to look around.\nUse player.shoot(), player.reload() and player.dodge() to fight in combat.\nUse player.task() to find out more about your current task.';
+    return 'Use player.move(N,E,S,W) to move.\nUse player.look(N,E,S,W) to look around.\nUse player.shoot(), player.reload() and player.dodge() to fight in combat.\nUse player.task() to find out more about your current task.\nUse player.info() to view your current status and equipment.\nUse player.touch() to interact with your enviroment whenever possible.';
   };
 
   this.task = function () {
@@ -1587,6 +1695,10 @@ function Webconsole(main) {
 
   this.info = function () {
     return main.handle('info');
+  };
+
+  this.log = function () {
+    return main.handle('log');
   };
   /* These varibales are used to enable input of
    * direction commands without string escape.
@@ -1598,13 +1710,6 @@ function Webconsole(main) {
   window.E = window.O = window.o = window.East = window.east = new _utils.Direction("E");
   window.S = window.s = window.South = window.south = new _utils.Direction("S");
   window.W = window.w = window.West = window.west = new _utils.Direction("W");
-  /* These varibales are used to enable input of
-   * asnwer commands without string escape.
-   * Player.say(Y) instead of player.say("Y")
-   */
-
-  window.Y = window.J = window.y = window.j = window.Yes = window.Ja = window.yes = window.ja = true;
-  window.No = window.Nein = window.no = window.nein = false;
   window.player = this;
   window.p = window.player; //shorthand
 
@@ -9671,7 +9776,7 @@ var parent = module.bundle.parent;
 if ((!parent || !parent.isParcelRequire) && typeof WebSocket !== 'undefined') {
   var hostname = "" || location.hostname;
   var protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-  var ws = new WebSocket(protocol + '://' + hostname + ':' + "61487" + '/');
+  var ws = new WebSocket(protocol + '://' + hostname + ':' + "63272" + '/');
 
   ws.onmessage = function (event) {
     checkedAssets = {};

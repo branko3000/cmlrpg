@@ -47,9 +47,13 @@ export default function Player(config){
             playerAmmunition: this.currentAmmunition,
             playerMaxAmmunition: this.weapon.capacity,
             playerWeapon: this.weapon.name,
-            playerWeaponDamage: (this.weapon.power - this.weapon.deviance) + '-' + (this.weapon.power + this.weapon.deviance),
-            playerArmor: this.armor.name
+            playerWeaponPower: (this.weapon.power - this.weapon.deviance) + '-' + (this.weapon.power + this.weapon.deviance),
+            playerArmor: this.armor.name,
+            playerArmorPower: this.armor.power
         }
+    }
+    this.equip = function(item){
+      this[item.type] = item;
     }
     //returns a random battlecry
     this.giveBattlecry = function(){
@@ -66,8 +70,5 @@ export default function Player(config){
     //returns a random armor sound
     this.giveArmorsound = function(){
       return Finder.getRandomEntryInArray(this.armor.sounds);
-    }
-    this.giveInfo = function(){
-      return this.currentHealth + '/' + this.maxHealth + '\nLEVEL: ' + this.level + '\nWEAPON: ' + this.weapon.name + '\nARMOR: ' + this.armor.name;
     }
 }

@@ -1,5 +1,22 @@
 const Story = [
   {
+    title: 'A new boomstick',
+    prolog: 'Get yourself some boomstick.',
+    epilog: 'You got yourself a new boomstick!',
+    description: 'Go to the weapon maker and get ypurself a boomstick.',
+    xp: 20,
+    goal: {x:-1,y:-1},
+    tiles: [
+      {
+        name: 'weapon maker',
+        happening: 'item',
+        items: ['boomstick','heavy armor'],
+        x: -1,
+        y: -1
+      }
+    ]
+  },
+  {
     title: 'The potion',
     prolog: 'To fight the goblin leader you will need a special toxin. Only then will you be able to hurt with more then just words.',
     epilog: 'The witch hut disappears right in front of you. The witch gave you a small, surprisingly small bottle, containing a shimmering green solution. Will this be enough to hurt the goblin leader?',

@@ -11,6 +11,9 @@ export default function Webconsole(main){
   this.look = function(direction){
     return main.handle("look",[direction]);
   }
+  this.touch = function(){
+    return main.handle('touch');
+  }
   this.dodge = function(){
     return main.handle("dodge");
   }
@@ -21,13 +24,16 @@ export default function Webconsole(main){
     return main.handle("reload");
   }
   this.help = function(){
-    return 'Use player.move(N,E,S,W) to move.\nUse player.look(N,E,S,W) to look around.\nUse player.shoot(), player.reload() and player.dodge() to fight in combat.\nUse player.task() to find out more about your current task.';
+    return 'Use player.move(N,E,S,W) to move.\nUse player.look(N,E,S,W) to look around.\nUse player.shoot(), player.reload() and player.dodge() to fight in combat.\nUse player.task() to find out more about your current task.\nUse player.info() to view your current status and equipment.\nUse player.touch() to interact with your enviroment whenever possible.';
   }
   this.task = function(){
     return main.handle('task');
   }
   this.info = function(){
     return main.handle('info');
+  }
+  this.log = function(){
+    return main.handle('log');
   }
   /* These varibales are used to enable input of
    * direction commands without string escape.
@@ -37,12 +43,6 @@ export default function Webconsole(main){
   window.E = window.O = window.o = window.East = window.east = new Direction("E");
   window.S = window.s = window.South = window.south = new Direction("S");
   window.W = window.w = window.West = window.west = new Direction("W");
-  /* These varibales are used to enable input of
-   * asnwer commands without string escape.
-   * Player.say(Y) instead of player.say("Y")
-   */
-   window.Y = window.J = window.y = window.j = window.Yes = window.Ja = window.yes = window.ja = true;
-   window.No = window.Nein = window.no = window.nein = false;
 
    window.player = this;
    window.p = window.player; //shorthand

@@ -173,9 +173,10 @@ The following variables can be used from within a string pattern:
 - playerMaxAmmunition - the capacity of the weapon the player is currently holding.
 - playerWeapon - the name of the weapon the player has currently equipped.
 - playerWeaponSound - a random sound from all of the possibile sounds the currently equipped weapon of the player can make.
-- playerWeaponDamage - the damage range of the players weapon
+- playerWeaponPower - the damage range of the players weapon
 - playerArmor - the name of the armor the player has currently equipped.
 - playerArmorSound - a sound the players armor can make
+- playerArmorPower - the power of the currently equipped armour
 - enemyName - the name of the enemy the player has fought last, during a fight it is the name of the current enemy.
 - enemyBehavior - the name of the enemys behavior
 - enemyBattlecry - a random battlecry from the list of battlecrys the enemy has.
@@ -184,6 +185,9 @@ The following variables can be used from within a string pattern:
 - enemyMaxHealth - the maximum amount of health the enemy can have.
 - xpGain - the amount of XP the current enemy is worth/the current goal yields.
 - enemyWeapon, enemyWeaponSound, enemyWeaponDamage, enemyArmor, enemyArmorSound, enemyAmmunition, enemyMaxAmmunition - equivalent to the values for player, just specific to the enemy instead of the player.
+- itemName - Name of the last item that was in the item pick up dialogue
+- itemPower - Power of the last item. Will be in the form of `X-Y` for weapons with the deviance used.
+- itemCapacity - Capacity of the last item, only relevant for weapons
 
 ### Enemys.js
 
@@ -385,10 +389,35 @@ The `tiles` property is used to overwrite certain tiles on the map while the cha
 This file contains an array containig objects which represent different items in the game. The file should look like this:
 
 ```js
+const Items = [
+  {
+    type: 'weapon',
+    name: 'boomstick',
+    power: 8,
+    deviance: 8,
+    capacity: 2,
+    sounds: [
+      'Peng',
+      'Bauz',
+      'Ssst Bumm'
+    ]
+  },
+  {
+    type: 'armor',
+    name: 'heavy armor',
+    power: 7,
+    sounds: [
+      'Donk',
+      'Denk'
+    ]
+  }
+]
+
+export default Items;
 
 ```
 
-Each item needs a `name` and `description` field, which is used in the loot dialogue. There are currently three different types of items which are to be specified by the `type` property. Each type needs certain additional propertys:
+Each item needs a `name` and `type` field. There are currently two different types of items which are to be specified by the `type` property. Each type needs certain additional propertys:
 
 - `weapon`
   - `power` - the base to use for damage calculations
@@ -398,28 +427,6 @@ Each item needs a `name` and `description` field, which is used in the loot dial
 - `armor`
   - `power` - how much damage it can reduce
   - `sounds` - array with sound strings that may be used
-- `potion`
-  - `trigger` - when this potion is used/can be used
-    - `pickup` - effect happens upon picking up the potion
-    - `combat` - potion can be consumed from the inventory during combat
-    - `inventory` - potion can be consumed from the inventory at any time
-  - `durationtype` - the way the duration is determined
-    - `once` - the effect happens only once
-    - `infinite` - the effect takes place forever
-    - `steps` - the effect takes place for a certain amount of steps
-    - `fights` - the effect takes place for a certain amount of fights
-    - `rounds` - the effect takes place for a certain amount of fighting rounds, starting in the next (or current) fight. Effect ends when the next (or current) fight ends.
-  - `duration` - specifies the number for the durationtype. Is ignored for `durationtype: 'once'` and `durationtype: 'infinite'`
-  - `effects` - an array of the effects that should happen when the potion is triggered and everytime the duration retriggers it
-    - `parameter` - the parameter that should be modified
-    - `modificatiotype` - the modification that shall be done on every trigger. More below.
-      - `set` - sets the parameter to a certain value
-      - `up` - ups the parameter by a certain value (upping by a negative value will result in a reduction of the parameter)
-      - `lock` - will keep the parameter from being changed while the potion is active. Keep in mind, that all effects of the potion happen in order of the array. So if you want to set and then lock a parameter then you have to do the setting first.
-    - `modification` - the value of the modification, can be ignored for `modificationtype: 'lock'`. To set a numerical value to its highest value, simply set it to an insanely high value. The game will cap it at the max.
-      - `1` - specifies a certain number
-      - `''` - specifies a certain string
-      - `[]` - use a random value from the specified array
 
 ## Documentation
 

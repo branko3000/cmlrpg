@@ -3,6 +3,7 @@ import Library from './library.js'; //imports the object which holds all strings
 import Enemys from "./enemys.js"; //imports the object that holds all enemyobject for combat
 import Player from "./player.js"; //imports the object that holds all enemyobject for combat
 import Story from "./story.js";
+import Items from './items.js';
 
 const Config = { //creates a config object which will store all of the imported fields and will be passed to the main
   language: "en",
@@ -12,6 +13,7 @@ const Config = { //creates a config object which will store all of the imported 
   player: Player,
   tiles: Tiles,
   library: Library,
-  enemys: Enemys
+  enemys: Enemys,
+  items: Items
 }
 export default Config;
