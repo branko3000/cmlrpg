@@ -121,5 +121,22 @@ export let Finder = {
       to[key] = from[key];
     }
     return to;
+  },
+  getEntryFromChancedObject: function(object){
+    let keys = Object.keys(object).map(Number);
+    let total = keys.reduce((pv, cv) => pv + cv, 0);
+    let position = Math.round(Math.random() * total);
+    let entry = 0;
+    let i = -1;
+    while(entry <= position){
+      i++;
+      entry += keys[i];
+    }
+    if(object[keys[i]]){
+      return object[keys[i]];
+    }
+    else{
+      return object[keys[0]];
+    }
   }
 }

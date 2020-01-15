@@ -1,8 +1,6 @@
 const Enemys = [
   {
     name: "goblin",
-    maxHealth: 10,
-    xp: 10,
     battlecrys: [
       'Die you filthy bugger!',
       'I will delife you, pest!',
@@ -13,52 +11,28 @@ const Enemys = [
       'Tell my kids that I love them!',
       'I will be be back!'
     ],
-    armors: [
-      {
-        name: 'some pieces of hide',
-        power: 2,
-        sounds: [
-          'Krrrrt',
-          'Ritsch Ratsch',
-          'Brrrrt'
-        ]
+    levels: {
+      3: {
+        maxHealth: 10,
+        xp: 10,
+        armors: ['some pieces of hide', 'light armor'],
+        weapons: ['short bow','slingshot'],
+        behaviors: ['chill']
       },
-      {
-        name: 'light armor',
-        power: 4,
-        sounds: [
-          'Kling',
-          'Ding',
-          'Pling'
-        ]
+      10: {
+        maxHealth: 15,
+        xp: 20,
+        armors: ['heavy armor'],
+        weapons: ['boomstick'],
+        behaviors: ['aggressive','smart']
       }
-    ],
-    weapons: [
-      {
-        name: 'short bow',
-        power: 3,
-        deviance: 1,
-        capacity: 3,
-        sounds: [
-          'does Shhhhhh',
-          'sounds Sssst',
-          'makes a Oioioioiong sound'
-        ]
-      },
-      {
-        name: 'slingshot',
-        power: 4,
-        deviance: 3,
-        capacity: 5,
-        startWith: 1,
-        sounds: [
-          'does Ploing',
-          'makes Pheeew',
-          'does a Donk'
-        ]
-      }
-    ],
-    behaviors: [
+    },
+    maxHealth: 15,
+    xp: 20,
+    armors: ['heavy armor'],
+    weapons: ['boomstick'],
+    behaviors: ['aggressive','smart'],
+    patterns: [
       {
         name: 'aggressive',
         pattern: 'RRSS'

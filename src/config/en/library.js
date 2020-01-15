@@ -75,7 +75,7 @@ const Library = {
       'Chapter {taskNumber} - {taskTitle}:\n{taskDescription}\n{taskDirections} - {taskXP}XP'
   ],
   info: [
-      'Lvl. {playerLevel} | {playerHealth}/{playerMaxHealth}\n{playerWeapon}: {playerWeaponPower} | {playerAmmunition} / {playerMaxAmmunition}\n{playerArmor}: {playerArmorPower}'
+      'Lvl. {playerLevel} | {playerHealth}/{playerMaxHealth}\n{playerXP}XP / {playerXPGoal}XP\n {playerWeapon}: {playerWeaponPower} | {playerAmmunition} / {playerMaxAmmunition}\n{playerArmor}: {playerArmorPower}'
   ],
   itemweapon: [
     'You have found a {itemName}[{itemPower} | {itemCapacity}]. Use player.touch() to equip it. Use player.info() to view your current equipment.'

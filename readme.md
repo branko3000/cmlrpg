@@ -83,14 +83,37 @@ const Tiles = [
   {
     name: 'forrest with a goblin hut',
     happening: 'encounter',
-    enemys: [
+    options: [
       'goblin'
+    ]
+  },
+  {
+    name: 'forrest with a goblin treehouse',
+    happening: 'encounter',
+    options: {
+      70: 'goblin',
+      30: 'goblin archer'
+    }
+  },
+  {
+    name: 'forrest with a forgotten cave',
+    happening: 'item',
+    options: [
+      'ancient crossbow', 'rusty chainmail'
     ]
   }
 ]
 
 export default Tiles;
 ```
+
+The happening of a tile is either `null` or one fo the following:
+
+- `encounter` will start a combat with a enemy
+- `item` will open a loot dialogue with a certain item
+- `interaction` will return a certain dialogue upon using `touch()`
+
+The `options` field needs to be present only when there is `happening`. This field contains the different options for the happening, either as an array or as an object. When a array is used the selected option is selected at random. When a object is used it has to contain any number of numbered properties (*real* integers, not `'1':`). These are used to give different chances to different options. The numbers do not have to add up to 100. **Notice:** You can create different chances with arrays as well by adding objects multiple times.
 
 ### Library.js
 
@@ -162,72 +185,70 @@ Within the string patterns there are varibales available. To have a the value of
 
 The following variables can be used from within a string pattern:
 
-- direction - The direction the player is facing.
-- close - the name of the tile right infront of the player, relative to the direction he is facing.
-- far - the name of the tile behind the close tile, relative to the direction the player is facing.
-- area - the name of the tile the player is currently standing on.
-- playerHealth - the current health of the player.
-- playerMaxHealth - the maximum amount of health the player can have.
-- playerLevel - the current level of the player
-- playerAmmunition - the current amount of ammunition the player has loaded.
-- playerMaxAmmunition - the capacity of the weapon the player is currently holding.
-- playerWeapon - the name of the weapon the player has currently equipped.
-- playerWeaponSound - a random sound from all of the possibile sounds the currently equipped weapon of the player can make.
-- playerWeaponPower - the damage range of the players weapon
-- playerArmor - the name of the armor the player has currently equipped.
-- playerArmorSound - a sound the players armor can make
-- playerArmorPower - the power of the currently equipped armour
-- enemyName - the name of the enemy the player has fought last, during a fight it is the name of the current enemy.
-- enemyBehavior - the name of the enemys behavior
-- enemyBattlecry - a random battlecry from the list of battlecrys the enemy has.
-- enemyDeathcry - a random deathcry from the list of deathcrys the enemy has.
-- enemyHealth - the current amount of health of the enemy. 0 when there is no combat happening at the moment.
-- enemyMaxHealth - the maximum amount of health the enemy can have.
-- xpGain - the amount of XP the current enemy is worth/the current goal yields.
-- enemyWeapon, enemyWeaponSound, enemyWeaponDamage, enemyArmor, enemyArmorSound, enemyAmmunition, enemyMaxAmmunition - equivalent to the values for player, just specific to the enemy instead of the player.
-- itemName - Name of the last item that was in the item pick up dialogue
-- itemPower - Power of the last item. Will be in the form of `X-Y` for weapons with the deviance used.
-- itemCapacity - Capacity of the last item, only relevant for weapons
+- `{direction}` - The direction the player is facing.
+- `{close}` - the name of the tile right infront of the player, relative to the direction he is facing.
+- `{far}` - the name of the tile behind the close tile, relative to the direction the player is facing.
+- `{area}` - the name of the tile the player is currently standing on.
+- `{playerHealth}` - the current health of the player.
+- `{playerMaxHealth}` - the maximum amount of health the player can have.
+- `{playerLevel}` - the current level of the player
+- `{playerXP}` - the current amount of XP the player has
+- `{playerXPMissing}` - the amount of XP the player is missing to reach next level (relative amount)
+- `{playerXPGoal}` - the amount of XP needed for next player level (absolute amount)
+- `{playerAmmunition}` - the current amount of ammunition the player has loaded.
+- `{playerMaxAmmunition}` - the capacity of the weapon the player is currently holding.
+- `{playerWeapon}` - the name of the weapon the player has currently equipped.
+- `{playerWeaponSound}` - a random sound from all of the possibile sounds the currently equipped weapon of the player can make.
+- `{playerWeaponPower}` - the damage range of the players weapon
+- `{playerArmor}` - the name of the armor the player has currently equipped.
+- `{playerArmorSound}` - a sound the players armor can make
+- `{playerArmorPower}` - the power of the currently equipped armour
+- `{enemyName}` - the name of the enemy the player has fought last, during a fight it is the name of the current enemy.
+- `{enemyBehavior}` - the name of the enemys behavior
+- `{enemyBattlecry}` - a random battlecry from the list of battlecrys the enemy has.
+- `{enemyDeathcry}` - a random deathcry from the list of deathcrys the enemy has.
+- `{enemyHealth}` - the current amount of health of the enemy. 0 when there is no combat happening at the moment.
+- `{enemyMaxHealth}` - the maximum amount of health the enemy can have.
+- `{xpGain}` - the amount of XP the current enemy is worth/the current goal yields.
+- `{enemyWeapon}`, `{enemyWeaponSound}`, `{enemyWeaponDamage}`, `{enemyArmor}`, `{enemyArmorSound}`, `{enemyAmmunition}`, `{enemyMaxAmmunition}` - equivalent to the values for player, just specific to the enemy instead of the player.
+- `{itemName}` - Name of the last item that was in the item pick up dialogue
+- `{itemPower}` - Power of the last item. Will be in the form of `X-Y` for weapons with the deviance used.
+- `{itemCapacity}` - Capacity of the last item, only relevant for weapons
 
 ### Enemys.js
 
 This file contains an array of objects with each representing a enemy within the game. These objects are called by tiles in the `Tiles.js` file. The file should look like this:
 
-```
+```js
 const Enemys = [
   {
     name: "goblin",
-    health: 10,
-    battlecrys: [
-      'Die you pest!'
-    ],
-    deathcrys: [
-      'I am dying...'
-    ],
-    armors: [
-      {
-        name: 'light plate armor',
-        power: 3,
-        sounds: [
-          'plings'
-        ]
+    battlecrys: ['Die you filthy bugger!'],
+    deathcrys: ['I will be be back!'],
+    levels: {
+      1: {
+        maxHealth: 10,
+        xp: 10,
+        armors: ['some pieces of hide', 'light armor'],
+        weapons: ['short bow','slingshot'],
+        behaviors: ['chill']
+      },
+      10: {
+        maxHealth: 15,
+        xp: 20,
+        armors: ['heavy armor'],
+        weapons: ['boomstick'],
+        behaviors: ['aggressive','smart']
       }
-    ],
-    weapons: [
-      {
-        name: 'short bow',
-        power: 5,
-        deviance: 3,
-        capacity: 3,
-        sounds: [
-          'makes Sssst!'
-        ]
-      }
-    ],
-    behaviors: [
+    },
+    patterns: [
       {
         name: 'aggressive',
-        pattern: 'RRSSHRSXRS'
+        pattern: 'RRSS'
+      },
+      {
+        name: 'chill',
+        pattern: 'RDDSXX'
       }
     ]
   }
@@ -237,9 +258,9 @@ export default Enemys;
 
 ```
 
-All of the arrays be extended to any length. Which value is used is determined by random. Weapon, armor, behavior and deathcry are decided on creation, the battlecry and all sounds are selected new everytime they are used. The name field is to be matched by the `enemy: []` array from a tile object in the `Tile.js` file.
+All of the arrays can be extended to any length. Which value is used is determined by random. Weapon, armor, behavior and deathcry are decided on creation, the battlecry and all sounds are selected new everytime they are used. The name field is to be matched by the `enemy: []` array from a tile object in the `Tile.js` file.
 
-The behavior field contains different behaviors for this enemy. Each behavior has a `name:`, which is accessible within library strings using `{enemyBehavior}` and a `pattern:` which is used to determine the enemys action in a combat. Each letter in the patternstring represents one of 4 actions. Which letter is used depends on the progress of the combat. The letter is selected based on the current combat round. So in the first combat round the first letter is used as a behavior, in the second round the second string and so on. When the rounds exceed the length of the string, the pattern is looped. So the longer the pattern the less likely the player will get used to it. You can use this to add different difficulties to your enemys. Each letter represents the following behavior:
+The patterns field contains different behaviorial patterns for this enemy. Each behavior has a `name:`, which is accessible within library strings using `{enemyBehavior}` and a `pattern:` which is used to determine the enemys action in a combat. Each letter in the patternstring represents one of 4 actions. Which letter is used depends on the progress of the combat. The letter is selected based on the current combat round. So in the first combat round the first letter is used as a behavior, in the second round the second string and so on. When the rounds exceed the length of the string, the pattern is looped. So the longer the pattern the less likely the player will get used to it. You can use this to add different difficulties to your enemys. Each letter represents the following behavior:
 
 - R - reload
 - S - shoot
@@ -247,24 +268,37 @@ The behavior field contains different behaviors for this enemy. Each behavior ha
 - X - random behavior is selected from the 3 above
 - \* - the best possibile move, based on the players action, is selected
 
-#### Some thoughts on patterns
+You may either define the `maxHealth`, `xp`, `armors`, `weapons`,`behaviors` once within the main object or add a `levels` property to the main object instead. Within this `levels` object you can define different level breakpoints by adding a numbered property (actual *int*, not like this `'1':`). Within these breakpoint propertys you then add an object containing the `maxHealth`, `xp`, `armors`, `weapons`,`behaviors` propertys. Which *setup* is used is determined by the players level.
 
-Weapon and armor are not the only things that make an enemy hard to deal with. The pattern is quite important as well. You have to think about the following things when designing a pattern: how much damage will it deal? How random will it be? How hard is it to recognise?
+The setup used is the breakpoint that is the least below the player level or equivalent to it. If the players level is smaller then the smallest defined breakpoint, the smallest breakpoint is used. Here is a example:
 
-The damage output of a pattern is important, as the game is not over when the fight is done. The more damage this enemy will deal before he is dead, the harder the game will be to continue. The most damaging pattern is obviously: `'RS'`. Try to mix in some longer moments of dodging to reduce damage output, especially with highly damaging weapons attached.
+The following breakpoints are defined:
 
-The randomness of a pattern is mainly due to the usage of the `X`. The more `X` the harder it will be to recognise, as you cannot be sure if the action was random or part of the pattern. But the `*` can seem to be random as well, as the player is unable to know if the actual action came from the `X` or the `*`. So to control, how good a pattern is to recognise (and therefore to be easily beaten) you have to think about the amount of `X` and `*` characters in it.
+```
+2:{},
+3:{},
+5:{}
+```
 
-But the length of the pattern is important as well. The shorter it is, the faster the player will notice when the pattern starts again and will be able to beat it. Mixing in *fake* repeats can make a pattern harder to guess, just as the usage of `X` will. When you have `'RRSDSRRSSD'` the player might guess, that the second time the double reload appears, the pattern is already repeating. He might then dodge the first shot (good) but will then reload, as he is expecting the enemy to dodge anyways. The player will then be hit by a shot he was totally not expecting.
+Here is a chart of which breakpoint is used when:
 
-Here are some patterns with comments on their difficulty:
+| Playerlevel | Enemylevel |
+| ----------- | ---------- |
+| 1           | 2          |
+| 2           | 2          |
+| 3           | 3          |
+| 4           | 3          |
+| 5           | 5          |
+| 100         | 5          |
 
-- `RDS` - insanely easy
-- `RDSRSD` - easy with a fake repeat
-- `RDSR**` - easy to guess but very hard to combat
-- `DX` - insanely easy
-- `DRDXDRD*` - easier to recognise then to combat
-- `RXR*X` - very hard tp recognise and combat. The combination `R*X` makes sure, that atleast some damage is done, even if most of the `X` come out as a *dodge*.
+The armors and weapons field can be populated with either:
+
+- a single string, matching an item in `Items.js`
+- an array of strings, each matching an item in `Items.js`
+- an object following the style of an item
+- an array of objects, following the style of an item
+
+The behaviors field is to be populated with names of patterns in the patterns array. Behavior is selected at random on creation.
 
 ### Player.js
 
@@ -274,28 +308,13 @@ This file contains values that define how the player will level up, behave and w
 const Player = {
   baseHealth: 20,
   healthPerLevel: 5,
+  levelingSpeed: 1,
   start: {
+    xp: 0,
     position: {x: 0, y: 0},
-    weapon: {
-      name: 'flint lock rifle',
-      power: 5,
-      deviance: 2,
-      capacity: 3,
-      sounds: [
-        'Peng!',
-        'Bauz!',
-        'Bumm!'
-      ]
-    },
-    armor: {
-      name: 'light plate armor',
-      power: 4,
-      sounds: [
-        'Zeeng',
-        'aches'
-      ]
-    }
-  },
+    weapon: 'flint lock rifle',
+    armor: 'light plate armor'
+  }
   battlecrys: [
     'Engarde!',
     'I will wreck you!'
@@ -308,7 +327,9 @@ const Player = {
 export default Player;
 ```
 
-### *Story.js*
+`baseHealth` is the health the player has at level 1. `healthPerLevel` is the amount of health added for each player level. `levelingSpeed` determines how many XP are needed for what level. A value of 0.5 will result in half the level for the same amount of XP.  A value of 2 will result in twice the level for the same amount of XP. The actual objects for `weapon` and `armor` are taken from the `Items.js` file. The propertys in the `start` property are used as the starting values at the beginning of the game.
+
+### Story.js
 
 This file contains an array with task objects. These tasks represent the story, that is being told in the game. This file should look like this:
 
@@ -320,35 +341,17 @@ const Story = [
     epilog: '',
     description: '',
     xp: 20,
-    loot: {
-      type: 'weapon',
-      name: 'flint lock rifle',
-      power: 5,
-      deviance: 2,
-      capacity: 3,
-      sounds: [
-        'Peng!',
-        'Bauz!',
-        'Bumm!'
-      ]
-    }
-    goals: [
-      {
-        type: 'location',
-        position: {
-          x: 10,
-          y: -5
-        }
-      }
-  	]
-		tiles: [
+    goals: {x: 10, y: -5},
+	tiles: [
       {
         name: 'forsaken castle',
+    	x: 10,
+    	y: -5,
         happening: 'encounter',
         enemys: [
           'ghost of the king'
         ]
-  		}
+      }
     ]
   }
 ]
@@ -357,34 +360,13 @@ export default Story;
 
 A chapter begins when the one before is completed. The player is then presented with the `epilog` of the finished chapter followed by the `prolog` of the new task. The first chapters `prolog` will be appended to the overall introduction at the start of the game. The last chapters `epilog` will be written right before the end credits. A chapters `description` and `name` will be given to the player when he calls the `task` function through the *Avatar*. The chapter number is defined by the position of the chapter in the `Story.js` array.
 
-The `xp` are given to the player after finishing the chapter. The player is also offered a *loot dialogue* containing the *item* in the `loot` field. You may specify a string or an array of strings instead of writing out the object.
+The `goal` property defines at which position this task will be finished. If there is a combat happening the combat has to be finished before the task is done.
 
-```js
-loot: 'Golden Bow',
-```
+The `xp` are given to the player after finishing the chapter. When there is a fight at the `goal` the XP of the enemy are given as well, so you might want to set either of the two `xp` values to 0. If you would like to have an item be the reward for finishing the story you can simply add a tile with `happening: 'item'` at the `goal`.
 
-If you specified a string, the item with this name from `Item.js` in the `config.js` will be given as loot. When you specify an array, a random string will be selected.
+The `tiles` property is used to overwrite certain tiles on the map while the chapter is active. This can be used to have more or specific enemys around the area or to add a boss to the `location` of the `goal`. Simply specify a tile in the style the `Tiles.js` file uses and add a `x` and a `y` property to specify the location where this tile should be loaded. These tiles can have happenings as well.
 
-```js
-loot: ['Golden Bow','Silver Bow','Flint Lock Pistol']
-```
-
-The `goal` property defines when the chapter will be finished. There are currently only three different types of goals:
-
-- location - reaching a certain location
-  - `position` set to an object containig a `x` and `y` property. When this point is reached in the game while this chapter is active, the chapter will be triggered as finished. If you don't overwrite the specified position, all triggered happenings will happen right after the task is finished.
-- distance - travelling a certain amount of steps
-  - `steps` set to a number of steps to walk
-- fight - fighting a certain amount of enemys
-  - `fights` set to the number of fights the player will have to win before finishing the chapter.
-- level - a certain level has to be reached before the chapter is finished
-  - `level` set to the level, the player will have to reach.
-
-To define what kind your goal is you have to write the correct `type` property. Each type needs a certain amount of additional information as specified above. You can combine multiple types in one goal. The chapter will be finished when all goals are reached. To specify multiple goals, simply add more goal objects to the `goals:` array. **Please be aware that specifying multiple goals of the same type will result in the game possibly breaking. Use multiple chapters instead.**
-
-The `tiles` property is used to overwrite certain tiles on the map while the chapter is active. This can be used to have more or specific enemys around the area or to add a boss the `location` of the goal. Simply specify a tile in the style the `Tiles.js` file uses and add a `x` and a `y` property to specify the location where this tile should be loaded. These tiles can have happenings as well. Any happening will be resolved before the chapter is finished, so a fight has to be won before the chapter is done.
-
-### *Items.js*
+### Items.js
 
 This file contains an array containig objects which represent different items in the game. The file should look like this:
 
@@ -392,10 +374,10 @@ This file contains an array containig objects which represent different items in
 const Items = [
   {
     type: 'weapon',
-    name: 'boomstick',
-    power: 8,
-    deviance: 8,
-    capacity: 2,
+    name: 'flint lock rifle',
+    power: 6,
+    deviance: 3,
+    capacity: 3,
     sounds: [
       'Peng',
       'Bauz',
@@ -404,8 +386,8 @@ const Items = [
   },
   {
     type: 'armor',
-    name: 'heavy armor',
-    power: 7,
+    name: 'light plate armor',
+    power: 3,
     sounds: [
       'Donk',
       'Denk'
@@ -434,9 +416,7 @@ Here I have documented how certain aspects work on the more technical site. This
 
 ### Avatars
 
-
-
-
+*To be added*
 
 ### Combat
 
@@ -454,3 +434,50 @@ The damage that is dealt is determined by three values: the power of the weapon,
 The higher the deviance, the less reliable the weapon is, but the more damage could be dealt.
 
 When the health of one combatant falls below 0 his action is still resolved (so a killed enemy could still hit you in the round you've killed him, thats how gun's work!). Afterwards the fight ends. When the player dies the game ends. A killed enemy will yield XP.
+
+### Patterns
+
+Weapon and armor are not the only things that make an enemy hard to deal with. The pattern is quite important as well. You have to think about the following things when designing a pattern: how much damage will it deal? How random will it be? How hard is it to recognise?
+
+The damage output of a pattern is important, as the game is not over when the fight is done. The more damage this enemy will deal before he is dead, the harder the game will be to continue. The most damaging pattern is obviously: `'RS'`. Try to mix in some longer moments of dodging to reduce damage output, especially with highly damaging weapons attached.
+
+The randomness of a pattern is mainly due to the usage of the `X`. The more `X` the harder it will be to recognise, as you cannot be sure if the action was random or part of the pattern. But the `*` can seem to be random as well, as the player is unable to know if the actual action came from the `X` or the `*`. So to control, how good a pattern is to recognise (and therefore to be easily beaten) you have to think about the amount of `X` and `*` characters in it.
+
+But the length of the pattern is important as well. The shorter it is, the faster the player will notice when the pattern starts again and will be able to beat it. Mixing in *fake* repeats can make a pattern harder to guess, just as the usage of `X` will. When you have `'RRSDSRRSSD'` the player might guess, that the second time the double reload appears, the pattern is already repeating. He might then dodge the first shot (good) but will then reload, as he is expecting the enemy to dodge anyways. The player will then be hit by a shot he was totally not expecting.
+
+Here are some patterns with comments on their difficulty:
+
+- `RDS` - insanely easy
+- `RDSRSD` - easy with a fake repeat
+- `RDSR**` - easy to guess but very hard to combat
+- `DX` - insanely easy
+- `DRDXDRD*` - easier to recognise then to combat
+- `RXR*X` - very hard tp recognise and combat. The combination `R*X` makes sure, that atleast some damage is done, even if most of the `X` come out as a *dodge*.
+
+## Planned Features
+
+- **Advanced Inventory**
+  - Adding a *real* inventory with inventory spaces
+  - Items can be *picked up*, *switched*, *dropped* or *inspected*
+  - optional: can be turned on and off from the config, will then replace the standard loot dialogue
+  - custom *minInventorySize*, *maxInventorySize*, optional inventory upgrades at level up or at item pick up.
+- **Advanced damage systems**
+  - Extending the standard damage system (mediumdamage +/- deviance - armor = damage )
+  - Adding a Rock-Paper-Scissor System using elements
+  - Elements can be translated from the library
+  - Weapon and armor items can have an optional
+- Adding a third itemtype like potions which can be consumed for specific effect
+- Maybe adding a bit more depth to the damage system, such as DOT and elementary damage
+- Supporting different weapons in the combat system, such as magic and close combat weapons
+- Having different classes and having skills for the classes
+- Having some sort of online filechecker, that checks if all needed propertys are given
+- Renaming Avatars to Interfaces and adding two more: a TTS one and a textfield one
+- Fallbacks and Being capable of always taking singular strings, objects or arrays of string or objects as an input and automatically adjusting the handling of the input.
+
+## To Do's for yd release
+
+- Add support for different sex
+- *Item drop from enemys*
+- Adding more `happening`s, some that use touch
+- Level up mit Message
+- Konsole mit Emojis

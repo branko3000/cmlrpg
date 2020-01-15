@@ -1,23 +1,67 @@
 import {Finder} from '../tools/utils.js';
 
-export default function Enemy(enemy){
-  //stores all properties of the enemy
-  let keys = Object.keys(enemy);
-  for(let key of keys){
-    this[key] = enemy[key];
+export default function Enemy(enemy,level,config){
+  if(level){
+    this.name = enemy.name;
+    this.battlecrys = enemy.battlecrys;
+    this.deathcrys = enemy.deathcrys;
+    this.patterns = enemy.patterns;
+    //stores all properties of the enemy for the correct level
+    let keys = Object.keys(enemy.levels[level]);
+    for(let key of keys){
+      this[key] = enemy.levels[level][key];
+    }
+  }
+  else{
+    let keys = Object.keys(enemy);
+    for(let key of keys){
+      this[key] = enemy[key];
+    }
   }
   //sets certain properties, that are not defined in the enemy Object
   this.currentHealth = this.maxHealth;
   //sets certain propertys, where multiple options exist
-  this.weapon = this.weapons[Math.floor(Math.random() * this.weapons.length)];
-  this.armor = this.armors[Math.floor(Math.random() * this.armors.length)];
-  this.behavior = this.behaviors[Math.floor(Math.random() * this.behaviors.length)];
-  if(this.weapon.startWith){
-    this.currentAmmunition = this.weapon.startWith;
+  this.setWeapon = function(){
+    let weapon = null;
+    if(this.weapons instanceof Array){
+      weapon = Finder.getRandomEntryInArray(this.weapons);
+      if(!(weapon instanceof Object)){
+        let _weapon = Finder.getObjectInArray(config.items,'name',weapon);
+        weapon = _weapon;
+      }
+    }
+    else{
+      weapon = this.weapons;
+      if(!(weapon instanceof Object)){
+        let _weapon = Finder.getObjectInArray(config.items,'name',weapon);
+        weapon = _weapon;
+      }
+    }
+    this.weapon = weapon;
   }
-  else{
-    this.currentAmmunition = 0;
+  this.setArmor = function(){
+    let armor = null;
+    if(this.armors instanceof Array){
+      armor = Finder.getRandomEntryInArray(this.armors);
+      if(!(armor instanceof Object)){
+        let _armor = Finder.getObjectInArray(config.items,'name',armor);
+        armor = _armor;
+      }
+    }
+    else{
+      armor = this.armors;
+      if(!(armor instanceof Object)){
+        let _armor = Finder.getObjectInArray(config.items,'name',armor);
+        armor = _armor;
+      }
+    }
+    this.armor = armor;
   }
+  this.setWeapon();
+  this.setArmor();
+  let behavior = Finder.getRandomEntryInArray(this.behaviors);
+  this.behavior = Finder.getObjectInArray(this.patterns,'name',behavior);
+  this.currentAmmunition = 0;
   //returns a random battlecry
   this.giveBattlecry = function(){
     return Finder.getRandomEntryInArray(this.battlecrys);

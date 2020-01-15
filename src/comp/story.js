@@ -11,7 +11,12 @@ export default function Story(story){
     }
   }
   this.give = function(property){
-    return this.chapters[this.currentChapter][property];
+    if(this.currentChapter < this.chapters.length){
+      return this.chapters[this.currentChapter][property];
+    }
+    else{
+      return false;
+    }
   }
   this.nextChapter = function(position){ //needs position for generating directions
     this.currentChapter++;
@@ -27,12 +32,17 @@ export default function Story(story){
     return direction;
   }
   this.giveTile = function(position){
-    for(let tile in this.chapters[this.currentChapter].tiles){
-      let _tile = this.chapters[this.currentChapter].tiles[tile];
-      if(_tile.x == position.x && _tile.y == position.y){
-        return _tile;
+    if(this.currentChapter < this.chapters.length){
+      for(let tile in this.chapters[this.currentChapter].tiles){
+        let _tile = this.chapters[this.currentChapter].tiles[tile];
+        if(_tile.x == position.x && _tile.y == position.y){
+          return _tile;
+        }
       }
+      return false;
     }
-    return false;
+    else{
+      return false;
+    }
   }
 }

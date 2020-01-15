@@ -1,11 +1,32 @@
 import Enemy from './enemy.js';
 import {Finder} from '../tools/utils.js';
 
-export default function Combat(enemy,player,boss){
-  this.boss = boss;
-  this.enemy = new Enemy(enemy); //creates a new eneny from the passed enemy
+export default function Combat(enemy,player,config){
+  /*Takes the player level and return the corresponding enemylevel based on what is defined for the given enemy*/
+  this.getEnemyLevel = function(level){
+    if(enemy.levels){
+      let breakpoints = Object.keys(enemy.levels).map(Number); //gets all defined level keys and stores them as numbers
+      breakpoints.sort(function(a,b){ //sorts the breakpoints in ascending order
+        return a - b;
+      })
+      let breakpoint = breakpoints[0]; //sets the first and now also smallest value as default, for fallback purpose
+      for(let point of breakpoints){
+        if(level >= point){
+          if(level - point < level - breakpoint){
+            breakpoint = point;
+          }
+        }
+      }
+      return breakpoint;
+    }
+    else{
+      return 0;
+    }
+  }
+  this.enemy = new Enemy(enemy,this.getEnemyLevel(player.level),config); //creates a new eneny from the passed enemy
   this.player = player;
   this.ticks = 0; //stores the combat progress
+  this.loot = enemy.loot || null;
   this.information = {}; //stores all information about this combat, used for making logentrys from the library
   this.handle = function(action){
     this.player.action = action; //stores the player action

@@ -1,4 +1,4 @@
-import {Point, Direction, Information} from '../tools/utils.js';
+import {Point, Direction, Information, Finder} from '../tools/utils.js';
 import MersenneTwister from '../tools/mersenneTwister.js';
 
 export default function Map(seed,tiles){
@@ -16,9 +16,14 @@ export default function Map(seed,tiles){
     }
   }
   this.giveEnemy = function(tile){
-    if(tile.enemys){
-      return tile.enemys[Math.floor(Math.random(tile.enemys.length))];
-    }
-    return null;
+      if(tile.options instanceof Array){
+        return Finder.getRandomEntryInArray(tile.options);
+      }
+      else if(tile.options instanceof Object){
+        return Finder.getEntryFromChancedObject(tile.options)
+      }
+      else{
+        return null;
+      }
   }
 }

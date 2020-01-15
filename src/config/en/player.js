@@ -1,7 +1,9 @@
 const Player = {
   baseHealth: 20,
   healthPerLevel: 5,
+  levelingSpeed: 1,
   start: {
+    xp: 1000,
     position: {x: 0, y: 0},
     weapon: {
       type: 'weapon',

@@ -1,5 +1,22 @@
 const Story = [
   {
+    title: 'Testfight',
+    prolog: 'Testfight',
+    epilog: 'Testfight',
+    description: 'Testfight',
+    xp: 20,
+    goal: {x:0,y:-1},
+    tiles: [
+      {
+        name: 'Testfight',
+        happening: 'encounter',
+        enemys: ['goblin'],
+        x: 0,
+        y: -1
+      }
+    ]
+  },
+  {
     title: 'A new boomstick',
     prolog: 'Get yourself some boomstick.',
     epilog: 'You got yourself a new boomstick!',

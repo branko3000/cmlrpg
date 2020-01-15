@@ -10,16 +10,14 @@ import {Point,Finder} from '../tools/utils.js';
  */
 export default function Player(config){
     /* Fields to store information about the player */
-    this.xp = 0;
+    this.xp = config.player.start.xp || 0;
     this.level = 1;
-    this.position = new Point(config.start.position);
-    this.maxHealth = config.baseHealth;
+    this.position = new Point(config.player.start.position);
+    this.maxHealth = config.player.baseHealth;
     this.currentHealth = this.maxHealth;
     this.currentAmmunition = 0;
-    this.weapon = config.start.weapon;
-    this.armor = config.start.armor;
-    this.battlecrys = config.battlecrys;
-    this.deathcrys = config.deathcrys;
+    this.battlecrys = config.player.battlecrys;
+    this.deathcrys = config.player.deathcrys;
     /*function*/
     this.move = function(direction){
         this.position.change(direction);
@@ -31,17 +29,29 @@ export default function Player(config){
       this.xp += value;
       this.setLevel();
     }
+    this.levelFromXp= function(xp){
+      return 1 + Math.floor((Math.sqrt(600+(100 * xp))/(50/(config.player.levelingSpeed || 1))));
+    }
+    this.xpFromLevel= function(level){
+      return (Math.pow((level - 1) * 50, 2) - 600) / 100
+    }
     this.setLevel = function(){
-      let level = 1 + Math.floor((Math.sqrt(625+(100 * this.xp)-25)/50));
+      let level = this.levelFromXp(this.xp);
       if(level != this.level){
         this.level = level;
-        this.maxHealth = config.baseHealth + (this.level * config.healthPerLevel);
-        this.currentHealth = this.maxHealth;
+        if(config.player.resetHealthOnLevelUp == true){
+          this.maxHealth = config.player.baseHealth + (this.level * config.player.healthPerLevel);
+          this.currentHealth = this.maxHealth;
+        }
       }
     }
+
     this.giveSummary = function(){
         return {
             playerLevel: this.level,
+            playerXP: this.xp,
+            playerXPMissing: this.xpFromLevel(this.level + 1) - this.xp,
+            playerXPGoal: this.xpFromLevel(this.level + 1),
             playerHealth: this.currentHealth,
             playerMaxHealth: this.maxHealth,
             playerAmmunition: this.currentAmmunition,
@@ -71,4 +81,23 @@ export default function Player(config){
     this.giveArmorsound = function(){
       return Finder.getRandomEntryInArray(this.armor.sounds);
     }
+    this.setWeapon = function(){
+      let weapon = config.player.start.weapon;
+      if(!(weapon instanceof Object)){
+        let _weapon = Finder.getObjectInArray(config.items,'name',weapon);
+        weapon = _weapon;
+      }
+      this.weapon = weapon;
+    }
+    this.setArmor = function(){
+      let armor = config.player.start.armor;
+      if(!(armor instanceof Object)){
+        let _armor = Finder.getObjectInArray(config.items,'name',armor);
+        armor = _armor;
+      }
+      this.armor = armor;
+    }
+    this.setWeapon();
+    this.setArmor();
+    this.setLevel(); //sets the level upon creation
 }
