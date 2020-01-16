@@ -9,6 +9,7 @@ import {Point, Direction, Information, Library, Finder} from '../tools/utils.js'
  * The main object is called by the avatar and handles all actions
  */
 export default function Main(config){
+  this.status = true;
   this.log = new Log(); //creates and stores a new Log
   this.player = new Player(config); //creates and stores a new virtual player with starting position and health
   this.map = new Map(3105,config.tiles); //creates and stores a new map with a seed and a set of tiles from the config
@@ -22,6 +23,7 @@ export default function Main(config){
   this.library.addInformation(information); //to have the player level accesible before the first encounter
   this.combat; //creates the combat variable which is used to handle combats. Empty means no combat at the moment
   this.loot = null; //will store an item that can be picked up by the player
+  this.interaction = null;
   this.giveConfigValue = function(value){
     return config[value];
   }
@@ -55,9 +57,11 @@ export default function Main(config){
    * it will return the text result and handle all of the consequences of the action internally.
    */
   this.handle = function(action, parameters){
-    switch(action){ //switches on the passed action
+    if(this.status){
+      switch(action){ //switches on the passed action
       case 'move': //when a move should be done
         this.loot = null; //empty loot on next move
+        this.interaction = null;
         if(parameters[0] instanceof Direction){ //if the passed parameter is a direction
           if(this.combat){ //when there is a combat ongoing
             return this.library.giveString('errorMoveInCombat'); //return a specific error from the library
@@ -75,6 +79,9 @@ export default function Main(config){
               else if(tile.options instanceof Object){
                 option = Finder.getEntryFromChancedObject(tile.options)
               }
+              else{
+                option = tile.options;
+              }
               switch(tile.happening){ //switches on the happening
                 case 'encounter': //when there is an encounter
                   let enemy = Finder.getObjectInArray(config.enemys,'name',option); //store the enemy of the encounter, find it within the enemy list using a finder from the utilities
@@ -83,7 +90,7 @@ export default function Main(config){
                   entry += ' ' + this.library.giveString('encounter');
                   break;
                 case 'item': //when there is an itemdrop
-                let item = Finder.getObjectInArray(config.items,'name',option);
+                  let item = Finder.getObjectInArray(config.items,'name',option);
                   this.loot = item;
                   switch(item.type){
                     case 'armor':
@@ -96,15 +103,23 @@ export default function Main(config){
                   }
                   entry += ' ' + this.library.giveString('item' + item.type);
                   break;
-                // case 'custom': //when there is a custom event
+                case 'interaction':
+                  this.interaction = option;
+                  entry += ' ' + this.library.giveString('interaction');
+                  break;
 
               }
             }
             if(this.onTaskGoal() && !this.combat){ //when the player is on a task goal and there was no combat started
-              let xp = this.story.give('xp')
-              this.player.changeXP(xp);
-              this.library.addInformation(this.player.giveSummary());
+              let xp = this.story.give('xp');
               entry += ' ' + this.nextChapter();
+              if(this.player.changeXP(xp)){
+                this.library.addInformation(this.player.giveSummary());
+                entry += ' ' + this.library.giveString('levelup');
+              }
+              else{
+                this.library.addInformation(this.player.giveSummary());
+              }
             }
             return this.log.makeEntry(entry); //make a log entry and return its content
           }
@@ -137,12 +152,17 @@ export default function Main(config){
         }
         break;
       case 'touch':
-        let type = 'nothing';
         if(this.loot){
-          type = this.loot.type;
+          let type = this.loot.type;
           this.player.equip(this.loot);
+          return this.library.giveString('touch' + type);
         }
-        return this.library.giveString('touch' + type);
+        else if(this.interaction){
+          return this.interaction;
+        }
+        else{
+          return this.library.giveString('touchnothing');
+        }
       case 'dodge': //for any of the fighting actions
       case 'shoot':
       case 'reload':
@@ -152,19 +172,25 @@ export default function Main(config){
           let entry = this.library.giveString(this.combat.player.action + 'Player'); //store the string for the player action
           entry += ' ' + this.library.giveString(this.combat.enemy.action + 'Enemy'); //store the string for the enemy action
           if(this.combat.enemy.action == 'die'){ //when the enemy is beaten
-            this.player.changeXP(this.combat.enemy.xp);
-            this.library.addInformation(this.player.giveSummary());
+            if(this.player.changeXP(this.combat.enemy.xp)){
+              this.library.addInformation(this.player.giveSummary());
+              entry += ' ' + this.library.giveString('levelup');
+            }
+            else{
+              this.library.addInformation(this.player.giveSummary());
+            }
             if(this.combat.loot){
-              let item;
+              let _item;
               if(this.combat.loot instanceof Array){
-                item = Finder.getRandomEntryInArray(this.combat.loot);
+                _item = Finder.getRandomEntryInArray(this.combat.loot);
               }
               else if(this.combat.loot instanceof Object){
-                item = Finder.getEntryFromChancedObject(this.combat.loot)
+                _item = Finder.getEntryFromChancedObject(this.combat.loot)
               }
               else{
-                item = this.combat.loot;
+                _item = this.combat.loot;
               }
+              let item = Finder.getObjectInArray(config.items, 'name', _item);
               this.loot = item;
               switch(item.type){
                 case 'armor':
@@ -181,6 +207,9 @@ export default function Main(config){
               entry += ' ' + this.nextChapter();//store the string for the enemy action
             }
             this.combat = null; //remove the combat
+          }
+          if(this.combat.player.action == 'die'){
+            this.status = false;
           }
           return this.log.makeEntry(entry); //make a logentry from the joined player and enemy string and return it
         }
@@ -210,6 +239,10 @@ export default function Main(config){
         break;
       default: //when there is a unknown action requested
         return this.library.giveString('errorUnknown'); //return a specific error from the library
+    }
+    }
+    else{
+      return this.library.giveString('playerDied');
     }
   }
 }

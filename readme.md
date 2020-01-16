@@ -101,6 +101,11 @@ const Tiles = [
     options: [
       'ancient crossbow', 'rusty chainmail'
     ]
+  },
+  {
+    name: 'forrest with a button',
+    happening: 'interaction',
+    options: 'The button turns red!'
   }
 ]
 
@@ -209,11 +214,16 @@ The following variables can be used from within a string pattern:
 - `{enemyDeathcry}` - a random deathcry from the list of deathcrys the enemy has.
 - `{enemyHealth}` - the current amount of health of the enemy. 0 when there is no combat happening at the moment.
 - `{enemyMaxHealth}` - the maximum amount of health the enemy can have.
+- `{enemySex}` - the defined gender of the enemy
 - `{xpGain}` - the amount of XP the current enemy is worth/the current goal yields.
 - `{enemyWeapon}`, `{enemyWeaponSound}`, `{enemyWeaponDamage}`, `{enemyArmor}`, `{enemyArmorSound}`, `{enemyAmmunition}`, `{enemyMaxAmmunition}` - equivalent to the values for player, just specific to the enemy instead of the player.
 - `{itemName}` - Name of the last item that was in the item pick up dialogue
 - `{itemPower}` - Power of the last item. Will be in the form of `X-Y` for weapons with the deviance used.
 - `{itemCapacity}` - Capacity of the last item, only relevant for weapons
+
+Additional to using a placeholder to fill in the value of a variable you can define a list of options. The selected option is then based on the value of the variable. If no value is passed or the passed value is not an option the first option is used as default. This can be used to have genderspecific pronouns for instance. When the current enemy has the value `gender: 'f'` defined you can write: `[gender:m->he,f->she,n->it]` and it will be printed as `she`.
+
+The library also supports the usage of emojis. You could just paste in a emoji but this will sometimes result in broken or wrong characters. Instead you can use `{:XXXXX}` and replace the `XXXXX` part with the code of the emoji (they can be found here for instance: [https://unicode.org/emoji/charts/full-emoji-list](https://unicode.org/emoji/charts/full-emoji-list.html)). So `{:1F604}` would come out as :smile:.
 
 ### Enemys.js
 
@@ -466,18 +476,22 @@ Here are some patterns with comments on their difficulty:
   - Adding a Rock-Paper-Scissor System using elements
   - Elements can be translated from the library
   - Weapon and armor items can have an optional
+  - weapon precision
+  - weapon reload amount
+  - start with wqeapon loaded from config
+  - startwith value for weapons
 - Adding a third itemtype like potions which can be consumed for specific effect
-- Maybe adding a bit more depth to the damage system, such as DOT and elementary damage
 - Supporting different weapons in the combat system, such as magic and close combat weapons
 - Having different classes and having skills for the classes
 - Having some sort of online filechecker, that checks if all needed propertys are given
 - Renaming Avatars to Interfaces and adding two more: a TTS one and a textfield one
 - Fallbacks and Being capable of always taking singular strings, objects or arrays of string or objects as an input and automatically adjusting the handling of the input.
+- base actual loot on map seed
+- connect loot to enemy equipment
+- global tile overrides
+- map function
 
 ## To Do's for yd release
 
-- Add support for different sex
-- *Item drop from enemys*
-- Adding more `happening`s, some that use touch
-- Level up mit Message
+- Add touch secrets as missions
 - Konsole mit Emojis

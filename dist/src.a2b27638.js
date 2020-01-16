@@ -235,11 +235,29 @@ function Library(books) {
     }
 
     string = this.replacePlaceholders(string);
+    string = this.replaceOptions(string);
+    string = this.replaceEmojis(string);
     return string;
   };
 
   this.selectString = function (array) {
     return array[Math.floor(Math.random() * array.length)];
+  };
+
+  this.replaceEmojis = function (string) {
+    var amount = string.split('{:').length - 1;
+
+    while (amount > 0) {
+      var start = string.indexOf('{:');
+      var end = string.indexOf('}', start);
+      var substring = string.substring(start, end + 1);
+      var code = substring.substring(substring.indexOf(':') + 1, substring.indexOf('}'));
+      var emoji = String.fromCodePoint('0x' + code);
+      string = string.replace(substring, emoji);
+      amount--;
+    }
+
+    return string;
   };
 
   this.replacePlaceholders = function (string) {
@@ -248,6 +266,60 @@ function Library(books) {
     for (var _i = 0, _informations = informations; _i < _informations.length; _i++) {
       var information = _informations[_i];
       string = string.replace('{' + information + '}', this.informations[information]);
+    }
+
+    return string;
+  };
+
+  this.replaceOptions = function (string) {
+    var informations = Object.keys(this.informations);
+
+    for (var _i2 = 0, _informations2 = informations; _i2 < _informations2.length; _i2++) {
+      var information = _informations2[_i2];
+      var key = '[' + information + ':';
+      var amount = string.split(key).length - 1;
+
+      while (amount > 0) {
+        var start = string.indexOf(key);
+        var end = string.indexOf(']', start);
+        var substring = string.substring(start, end + 1);
+        var optionslist = substring.substring(substring.indexOf(':') + 1, substring.indexOf(']'));
+        var options = optionslist.split(',');
+        var selected = null;
+        var _iteratorNormalCompletion = true;
+        var _didIteratorError = false;
+        var _iteratorError = undefined;
+
+        try {
+          for (var _iterator = options[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
+            var option = _step.value;
+
+            if (option.includes(this.informations[information] + '->')) {
+              selected = option.substring(option.indexOf('->') + 2);
+            }
+          }
+        } catch (err) {
+          _didIteratorError = true;
+          _iteratorError = err;
+        } finally {
+          try {
+            if (!_iteratorNormalCompletion && _iterator.return != null) {
+              _iterator.return();
+            }
+          } finally {
+            if (_didIteratorError) {
+              throw _iteratorError;
+            }
+          }
+        }
+
+        if (!selected) {
+          selected = options[0].substring(options[0].indexOf('->') + 2);
+        }
+
+        string = string.replace(substring, selected);
+        amount--;
+      }
     }
 
     return string;
@@ -275,8 +347,8 @@ var Finder = {
   addKeysFromTo: function addKeysFromTo(from, to) {
     var keys = Object.keys(from);
 
-    for (var _i2 = 0, _keys = keys; _i2 < _keys.length; _i2++) {
-      var key = _keys[_i2];
+    for (var _i3 = 0, _keys = keys; _i3 < _keys.length; _i3++) {
+      var key = _keys[_i3];
       to[key] = from[key];
     }
 
@@ -603,8 +675,9 @@ function Player(config) {
   };
 
   this.changeXP = function (value) {
+    var oldlevel = this.level;
     this.xp += value;
-    this.setLevel();
+    return this.setLevel();
   };
 
   this.levelFromXp = function (xp) {
@@ -625,6 +698,10 @@ function Player(config) {
         this.maxHealth = config.player.baseHealth + this.level * config.player.healthPerLevel;
         this.currentHealth = this.maxHealth;
       }
+
+      return true;
+    } else {
+      return false;
     }
   };
 
@@ -1026,6 +1103,7 @@ function Combat(enemy, player, config) {
     this.information.enemyDeathcry = this.enemy.giveDeathcry();
     this.information.enemyBehavior = this.enemy.behavior.name;
     this.information.xpGain = this.enemy.xp;
+    this.information.enemyGender = this.enemy.gender || 'n';
   };
 
   this.update(); //updates on creation
@@ -1130,6 +1208,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
  * The main object is called by the avatar and handles all actions
  */
 function Main(config) {
+  this.status = true;
   this.log = new _log.default(); //creates and stores a new Log
 
   this.player = new _player.default(config); //creates and stores a new virtual player with starting position and health
@@ -1149,6 +1228,8 @@ function Main(config) {
   this.combat; //creates the combat variable which is used to handle combats. Empty means no combat at the moment
 
   this.loot = null; //will store an item that can be picked up by the player
+
+  this.interaction = null;
 
   this.giveConfigValue = function (value) {
     return config[value];
@@ -1198,255 +1279,283 @@ function Main(config) {
 
 
   this.handle = function (action, parameters) {
-    switch (action) {
-      //switches on the passed action
-      case 'move':
-        //when a move should be done
-        this.loot = null; //empty loot on next move
+    if (this.status) {
+      switch (action) {
+        //switches on the passed action
+        case 'move':
+          //when a move should be done
+          this.loot = null; //empty loot on next move
 
-        if (parameters[0] instanceof _utils.Direction) {
-          //if the passed parameter is a direction
-          if (this.combat) {
-            //when there is a combat ongoing
-            return this.library.giveString('errorMoveInCombat'); //return a specific error from the library
+          this.interaction = null;
+
+          if (parameters[0] instanceof _utils.Direction) {
+            //if the passed parameter is a direction
+            if (this.combat) {
+              //when there is a combat ongoing
+              return this.library.giveString('errorMoveInCombat'); //return a specific error from the library
+            } else {
+              this.player.move(parameters[0]); //move the virtual player in the given direction
+
+              var tile = this.giveTile(this.player.position);
+              this.library.addInformation({
+                direction: this.library.giveString(parameters[0].name),
+                area: tile.name
+              }); //adds specific information
+
+              var entry = this.library.giveString('move');
+              ; //declares entry
+
+              if (tile.happening) {
+                //when there is a happening at the current tile
+                var option;
+
+                if (tile.options instanceof Array) {
+                  option = _utils.Finder.getRandomEntryInArray(tile.options);
+                } else if (tile.options instanceof Object) {
+                  option = _utils.Finder.getEntryFromChancedObject(tile.options);
+                } else {
+                  option = tile.options;
+                }
+
+                switch (tile.happening) {
+                  //switches on the happening
+                  case 'encounter':
+                    //when there is an encounter
+                    var enemy = _utils.Finder.getObjectInArray(config.enemys, 'name', option); //store the enemy of the encounter, find it within the enemy list using a finder from the utilities
+
+
+                    this.combat = new _combat.default(enemy, this.player, config); //creates and stores a new combat with the enemy and the player, passes the config for weapon identification
+
+                    this.library.addInformation(this.combat.information); //adds combat information
+
+                    entry += ' ' + this.library.giveString('encounter');
+                    break;
+
+                  case 'item':
+                    //when there is an itemdrop
+                    var item = _utils.Finder.getObjectInArray(config.items, 'name', option);
+
+                    this.loot = item;
+
+                    switch (item.type) {
+                      case 'armor':
+                        this.library.addInformation({
+                          itemName: item.name,
+                          itemPower: item.power
+                        });
+                        break;
+
+                      case 'weapon':
+                        var itemDamage = item.power - item.deviance + '-' + (item.power + item.deviance);
+                        this.library.addInformation({
+                          itemName: item.name,
+                          itemPower: itemDamage,
+                          itemCapacity: item.capacity
+                        });
+                        break;
+                    }
+
+                    entry += ' ' + this.library.giveString('item' + item.type);
+                    break;
+
+                  case 'interaction':
+                    this.interaction = option;
+                    entry += ' ' + this.library.giveString('interaction');
+                    break;
+                }
+              }
+
+              if (this.onTaskGoal() && !this.combat) {
+                //when the player is on a task goal and there was no combat started
+                var xp = this.story.give('xp');
+                entry += ' ' + this.nextChapter();
+
+                if (this.player.changeXP(xp)) {
+                  this.library.addInformation(this.player.giveSummary());
+                  entry += ' ' + this.library.giveString('levelup');
+                } else {
+                  this.library.addInformation(this.player.giveSummary());
+                }
+              }
+
+              return this.log.makeEntry(entry); //make a log entry and return its content
+            }
           } else {
-            this.player.move(parameters[0]); //move the virtual player in the given direction
+            //when a unvalid direction is passed
+            return this.library.giveString('errorNoValidDirection'); //return a specific error from the library
+          }
 
-            var tile = this.giveTile(this.player.position);
+          break;
+
+        case 'look':
+          //when a look action is happening
+          if (parameters[0] instanceof _utils.Direction) {
+            //when a valid direction is passed
+            var pointClose = new _utils.Point(this.player.position); //gets the player position
+
+            pointClose.change(parameters[0]); //moves it into the looked direction
+
+            var pointFar = new _utils.Point(pointClose); //gets the close positon
+
+            pointFar.change(parameters[0]); //moves it into the looked direction
+
+            var close = this.giveTile(pointClose);
+            ; //stores the tile from the map at close
+
+            var far = this.giveTile(pointFar);
+            ; //stores the tile from the map at far
+
+            var direction = this.library.giveString(parameters[0].name); //stores the direction string from the library
+
             this.library.addInformation({
-              direction: this.library.giveString(parameters[0].name),
-              area: tile.name
-            }); //adds specific information
+              close: close.name,
+              far: far.name,
+              direction: direction
+            });
 
-            var entry = this.library.giveString('move');
-            ; //declares entry
-
-            if (tile.happening) {
-              //when there is a happening at the current tile
-              var option;
-
-              if (tile.options instanceof Array) {
-                option = _utils.Finder.getRandomEntryInArray(tile.options);
-              } else if (tile.options instanceof Object) {
-                option = _utils.Finder.getEntryFromChancedObject(tile.options);
-              }
-
-              switch (tile.happening) {
-                //switches on the happening
-                case 'encounter':
-                  //when there is an encounter
-                  var enemy = _utils.Finder.getObjectInArray(config.enemys, 'name', option); //store the enemy of the encounter, find it within the enemy list using a finder from the utilities
+            var _entry; //declares an entry
 
 
-                  this.combat = new _combat.default(enemy, this.player, config); //creates and stores a new combat with the enemy and the player, passes the config for weapon identification
-
-                  this.library.addInformation(this.combat.information); //adds combat information
-
-                  entry += ' ' + this.library.giveString('encounter');
-                  break;
-
-                case 'item':
-                  //when there is an itemdrop
-                  var item = _utils.Finder.getObjectInArray(config.items, 'name', option);
-
-                  this.loot = item;
-
-                  switch (item.type) {
-                    case 'armor':
-                      this.library.addInformation({
-                        itemName: item.name,
-                        itemPower: item.power
-                      });
-                      break;
-
-                    case 'weapon':
-                      var itemDamage = item.power - item.deviance + '-' + (item.power + item.deviance);
-                      this.library.addInformation({
-                        itemName: item.name,
-                        itemPower: itemDamage,
-                        itemCapacity: item.capacity
-                      });
-                      break;
-                  }
-
-                  entry += ' ' + this.library.giveString('item' + item.type);
-                  break;
-                // case 'custom': //when there is a custom event
-              }
+            if (far.name == close.name) {
+              //when the tiles close and far are the same
+              _entry = this.library.giveString('lookSame'); //gets a specified string from the library
+            } else {
+              //when the tiles are different
+              _entry = this.library.giveString('lookDifferent'); //s.o.
             }
 
-            if (this.onTaskGoal() && !this.combat) {
-              //when the player is on a task goal and there was no combat started
-              var xp = this.story.give('xp');
-              this.player.changeXP(xp);
-              this.library.addInformation(this.player.giveSummary());
-              entry += ' ' + this.nextChapter();
-            }
-
-            return this.log.makeEntry(entry); //make a log entry and return its content
-          }
-        } else {
-          //when a unvalid direction is passed
-          return this.library.giveString('errorNoValidDirection'); //return a specific error from the library
-        }
-
-        break;
-
-      case 'look':
-        //when a look action is happening
-        if (parameters[0] instanceof _utils.Direction) {
-          //when a valid direction is passed
-          var pointClose = new _utils.Point(this.player.position); //gets the player position
-
-          pointClose.change(parameters[0]); //moves it into the looked direction
-
-          var pointFar = new _utils.Point(pointClose); //gets the close positon
-
-          pointFar.change(parameters[0]); //moves it into the looked direction
-
-          var close = this.giveTile(pointClose);
-          ; //stores the tile from the map at close
-
-          var far = this.giveTile(pointFar);
-          ; //stores the tile from the map at far
-
-          var direction = this.library.giveString(parameters[0].name); //stores the direction string from the library
-
-          this.library.addInformation({
-            close: close.name,
-            far: far.name,
-            direction: direction
-          });
-
-          var _entry; //declares an entry
-
-
-          if (far.name == close.name) {
-            //when the tiles close and far are the same
-            _entry = this.library.giveString('lookSame'); //gets a specified string from the library
+            return this.log.makeEntry(_entry); //make a log entry and return its content
           } else {
-            //when the tiles are different
-            _entry = this.library.giveString('lookDifferent'); //s.o.
+            //when a unvalid direction is passed
+            return this.library.giveString('errorNoValidDirection'); //return a specific error from the library
           }
 
-          return this.log.makeEntry(_entry); //make a log entry and return its content
-        } else {
-          //when a unvalid direction is passed
-          return this.library.giveString('errorNoValidDirection'); //return a specific error from the library
-        }
+          break;
 
-        break;
+        case 'touch':
+          if (this.loot) {
+            var type = this.loot.type;
+            this.player.equip(this.loot);
+            return this.library.giveString('touch' + type);
+          } else if (this.interaction) {
+            return this.interaction;
+          } else {
+            return this.library.giveString('touchnothing');
+          }
 
-      case 'touch':
-        var type = 'nothing';
+        case 'dodge': //for any of the fighting actions
 
-        if (this.loot) {
-          type = this.loot.type;
-          this.player.equip(this.loot);
-        }
+        case 'shoot':
+        case 'reload':
+          if (this.combat) {
+            //when there is a combat
+            this.combat.handle(action); //handle the combat virtually
 
-        return this.library.giveString('touch' + type);
+            this.library.addInformation(this.combat.information);
 
-      case 'dodge': //for any of the fighting actions
-
-      case 'shoot':
-      case 'reload':
-        if (this.combat) {
-          //when there is a combat
-          this.combat.handle(action); //handle the combat virtually
-
-          this.library.addInformation(this.combat.information);
-
-          var _entry2 = this.library.giveString(this.combat.player.action + 'Player'); //store the string for the player action
+            var _entry2 = this.library.giveString(this.combat.player.action + 'Player'); //store the string for the player action
 
 
-          _entry2 += ' ' + this.library.giveString(this.combat.enemy.action + 'Enemy'); //store the string for the enemy action
+            _entry2 += ' ' + this.library.giveString(this.combat.enemy.action + 'Enemy'); //store the string for the enemy action
 
-          if (this.combat.enemy.action == 'die') {
-            //when the enemy is beaten
-            this.player.changeXP(this.combat.enemy.xp);
-            this.library.addInformation(this.player.giveSummary());
-
-            if (this.combat.loot) {
-              var _item;
-
-              if (this.combat.loot instanceof Array) {
-                _item = _utils.Finder.getRandomEntryInArray(this.combat.loot);
-              } else if (this.combat.loot instanceof Object) {
-                _item = _utils.Finder.getEntryFromChancedObject(this.combat.loot);
+            if (this.combat.enemy.action == 'die') {
+              //when the enemy is beaten
+              if (this.player.changeXP(this.combat.enemy.xp)) {
+                this.library.addInformation(this.player.giveSummary());
+                _entry2 += ' ' + this.library.giveString('levelup');
               } else {
-                _item = this.combat.loot;
+                this.library.addInformation(this.player.giveSummary());
               }
 
-              this.loot = _item;
+              if (this.combat.loot) {
+                var _item;
 
-              switch (_item.type) {
-                case 'armor':
-                  this.library.addInformation({
-                    itemName: _item.name,
-                    itemPower: _item.power
-                  });
-                  break;
+                if (this.combat.loot instanceof Array) {
+                  _item = _utils.Finder.getRandomEntryInArray(this.combat.loot);
+                } else if (this.combat.loot instanceof Object) {
+                  _item = _utils.Finder.getEntryFromChancedObject(this.combat.loot);
+                } else {
+                  _item = this.combat.loot;
+                }
 
-                case 'weapon':
-                  var _itemDamage = _item.power - _item.deviance + '-' + (_item.power + _item.deviance);
+                var _item2 = _utils.Finder.getObjectInArray(config.items, 'name', _item);
 
-                  this.library.addInformation({
-                    itemName: _item.name,
-                    itemPower: _itemDamage,
-                    itemCapacity: _item.capacity
-                  });
-                  break;
+                this.loot = _item2;
+
+                switch (_item2.type) {
+                  case 'armor':
+                    this.library.addInformation({
+                      itemName: _item2.name,
+                      itemPower: _item2.power
+                    });
+                    break;
+
+                  case 'weapon':
+                    var _itemDamage = _item2.power - _item2.deviance + '-' + (_item2.power + _item2.deviance);
+
+                    this.library.addInformation({
+                      itemName: _item2.name,
+                      itemPower: _itemDamage,
+                      itemCapacity: _item2.capacity
+                    });
+                    break;
+                }
+
+                _entry2 += ' ' + this.library.giveString('item' + _item2.type);
               }
 
-              _entry2 += ' ' + this.library.giveString('item' + _item.type);
+              if (this.onTaskGoal()) {
+                _entry2 += ' ' + this.nextChapter(); //store the string for the enemy action
+              }
+
+              this.combat = null; //remove the combat
             }
 
-            if (this.onTaskGoal()) {
-              _entry2 += ' ' + this.nextChapter(); //store the string for the enemy action
+            if (this.combat.player.action == 'die') {
+              this.status = false;
             }
 
-            this.combat = null; //remove the combat
+            return this.log.makeEntry(_entry2); //make a logentry from the joined player and enemy string and return it
+          } else {
+            //when there is no combat
+            return this.library.giveString('errorNoCombat'); //return a specific error from the library
           }
 
-          return this.log.makeEntry(_entry2); //make a logentry from the joined player and enemy string and return it
-        } else {
-          //when there is no combat
-          return this.library.giveString('errorNoCombat'); //return a specific error from the library
-        }
+          break;
 
-        break;
+        case 'task':
+          var task = this.story.giveSummary(this.player.position);
 
-      case 'task':
-        var task = this.story.giveSummary(this.player.position);
+          if (task) {
+            this.library.addInformation(task);
+            return this.library.giveString('task');
+          } else {
+            return this.library.giveString('errorNoTasks');
+          }
 
-        if (task) {
-          this.library.addInformation(task);
-          return this.library.giveString('task');
-        } else {
-          return this.library.giveString('errorNoTasks');
-        }
+          break;
 
-        break;
+        case 'info':
+          this.library.addInformation(this.player.giveSummary());
+          return this.library.giveString('info');
 
-      case 'info':
-        this.library.addInformation(this.player.giveSummary());
-        return this.library.giveString('info');
+        case 'log':
+          var entrys = '';
 
-      case 'log':
-        var entrys = '';
+          for (var i = 0; i < this.log.entrys.length; i++) {
+            entrys += i + 1 + ': ' + this.log.entrys[i] + '\n';
+          }
 
-        for (var i = 0; i < this.log.entrys.length; i++) {
-          entrys += i + 1 + ': ' + this.log.entrys[i] + '\n';
-        }
+          return entrys;
+          break;
 
-        return entrys;
-        break;
-
-      default:
-        //when there is a unknown action requested
-        return this.library.giveString('errorUnknown');
-      //return a specific error from the library
+        default:
+          //when there is a unknown action requested
+          return this.library.giveString('errorUnknown');
+        //return a specific error from the library
+      }
+    } else {
+      return this.library.giveString('playerDied');
     }
   };
 }
@@ -1457,8 +1566,18 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 exports.default = void 0;
-var Tiles = [{
+
+var _options, _options2, _options3;
+
+function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
+
+var Tiles = [
+/*standard city enviroment*/
+{
   name: 'forrest',
+  happening: null
+}, {
+  name: 'street',
   happening: null
 }, {
   name: 'plain',
@@ -1478,25 +1597,62 @@ var Tiles = [{
 }, {
   name: 'plaza',
   happening: null
-}, {
+},
+/*enviroment with encounters*/
+{
   name: 'guarded suburb',
   happening: 'encounter',
   options: {
-    60: 'Roomba 676',
-    40: 'Roomba s9+'
+    70: 'Vroomba 676',
+    20: 'Vroomba s9+',
+    10: 'Sumsang smart fridge'
   }
 }, {
   name: 'suspicious parking lot',
   happening: 'encounter',
-  options: ['Roomba 676',, 'Roomba 676', 'Roomba 676', 'Roomba s9+', 'Roomba s9+', 'Samsung smart fridge']
+  options: {
+    60: 'Vroomba 676',
+    35: 'Vroomba s9+',
+    5: 'Terry t7'
+  }
 }, {
-  name: 'abandoned mall',
+  name: 'super secret lab',
+  happening: 'encounter',
+  options: {
+    30: 'Vroomba 676',
+    15: 'Vroomba s9+',
+    5: 'Terry t7',
+    50: 'Sumsang smart fridge'
+  }
+},
+/*enviroment with loot*/
+{
+  name: 'mall',
   happening: 'item',
-  options: ['rifle', 'shotgun', 'laserpistol', 'laserrifle', 'missile launcher', 'light armor']
+  options: (_options = {
+    10: 'pistol'
+  }, _defineProperty(_options, "10", 'revolver'), _defineProperty(_options, 30, 'shotgun'), _defineProperty(_options, 20, 'sniper rifle'), _defineProperty(_options, "20", 'semi-automatic rifle'), _defineProperty(_options, "30", 'assault rifle'), _defineProperty(_options, "20", 'leather jacket'), _defineProperty(_options, 40, 'bullet proof vest'), _defineProperty(_options, "10", 'laserrifle'), _defineProperty(_options, 2, 'RPG'), _options)
 }, {
-  name: 'abandoned store',
+  name: 'store',
   happening: 'item',
-  options: ['rifle', 'shotgun', 'laserpistol', 'laserrifle', 'leather jacket']
+  options: (_options2 = {
+    5: 'slingshot'
+  }, _defineProperty(_options2, "5", 'blowgun'), _defineProperty(_options2, 10, 'crossbow'), _defineProperty(_options2, "5", 'bow'), _defineProperty(_options2, 20, 'pistol'), _defineProperty(_options2, "10", 'revolver'), _defineProperty(_options2, "20", 'shotgun'), _defineProperty(_options2, "5", 'laserpistol'), _defineProperty(_options2, "10", 'winter coat'), _defineProperty(_options2, "20", 'leather jacket'), _options2)
+}, {
+  name: 'military base',
+  happening: 'item',
+  options: (_options3 = {
+    10: 'pistol'
+  }, _defineProperty(_options3, "10", 'silenced sniper rifle'), _defineProperty(_options3, 20, 'semi-automatic rifle'), _defineProperty(_options3, 50, 'assault rifle'), _defineProperty(_options3, "50", 'bullet proof vest'), _defineProperty(_options3, "20", 'light armor'), _defineProperty(_options3, 15, 'heavy armor'), _defineProperty(_options3, 5, 'RPG'), _defineProperty(_options3, 1, 'missile launcher'), _options3)
+}, {
+  name: 'secret lab',
+  happening: 'item',
+  options: _defineProperty({
+    100: 'lab coat',
+    50: 'raygun',
+    10: 'exosuite',
+    1: 'railgun'
+  }, "1", 'fusionblaster')
 }];
 var _default = Tiles;
 exports.default = _default;
@@ -1518,31 +1674,34 @@ var Library = {
   south: 'south',
   west: 'west',
   move: ['You move to the {direction} into a {area}.', 'You move in {direction}ern direction, entering a {area} shortly after.', 'You start moving into the {direction}. You enter a {area}.'],
-  encounter: ["You are immedeatly attacked by a {enemyBehavior} {enemyName}, wielding a {enemyWeapon}. The enemy shouts: '{enemyBattlecry}' while hurdling at you!", "A {enemyBehavior} {enemyName} jumps out behind you! Wielding a {enemyWeapon} and screaming: '{enemyBattlecry}'", "Whoah! What was that? '{enemyBattlecry}' it sounds from up close. A {enemyBehavior} {enemyName}, wielding a {enemyWeapon}!"],
+  encounter: ["You are immedeatly attacked by a {enemyBehavior} {enemyName}, wielding a {enemyWeapon}. The enemy shouts: '{enemyBattlecry}' while hurdling at you!", "A {enemyBehavior} {enemyName} jumps out behind you! [enemyGender:m->he,f->she,n->it] has a {enemyWeapon} and is screaming: '{enemyBattlecry}'", "Whoah! What was that? '{enemyBattlecry}' it sounds from up close. A {enemyBehavior} {enemyName}, wielding a {enemyWeapon}!"],
   taskFinished: ['{taskEpilog} You [{playerLevel} | {playerHealth}/{playerMaxHealth}] have gained {taskXP}XP. {taskProlog}'],
-  dodgePlayer: ["You [{playerHealth}/{playerMaxHealth}] throw yourself into cover.", "You [{playerHealth}/{playerMaxHealth}] swiftly strive to the side.", "As quick as possible you [{playerHealth}/{playerMaxHealth}] throw yourself on the ground."],
+  dodgePlayer: ["You [{playerHealth}/{playerMaxHealth}] throw yourself into cover {:1F4A8}.", "You [{playerHealth}/{playerMaxHealth}] swiftly strive to the side {:1F605}.", "As quick as possible you [{playerHealth}/{playerMaxHealth}] throw yourself on the ground {:1F4A8}."],
   reloadPlayer: ["You [{playerLevel} | {playerHealth}/{playerMaxHealth}] push a round into your {playerWeapon} [{playerWeaponDamage} | {playerAmmunition}/{playerMaxAmmunition}].", "You [{playerLevel} | {playerHealth}/{playerMaxHealth}] reload your {playerWeapon} [{playerWeaponDamage} | {playerAmmunition}/{playerMaxAmmunition}].", "You [{playerLevel} | {playerHealth}/{playerMaxHealth}] put a shot into the {playerWeapon} [{playerWeaponDamage} | {playerAmmunition}/{playerMaxAmmunition}]."],
   reloadFailedPlayer: ['You [{playerLevel} | {playerHealth}/{playerMaxHealth}] try tro cramp another shot into your already full {playerWeapon} [{playerAmmunition}/{playerMaxAmmunition}].', 'You [{playerLevel} | {playerHealth}/{playerMaxHealth}] try to reload the {playerWeapon} [{playerAmmunition}/{playerMaxAmmunition}], but it`s already fully loaded.'],
-  shootPlayer: ["You [{playerLevel} | {playerHealth}/{playerMaxHealth}] fire your {playerWeapon} [{playerAmmunition}/{playerMaxAmmunition}] and it does a {playerWeaponSound}, dealing a whopping {playerDamage} points of damage to your enemy - his {enemyArmor} {enemyArmorSound}s.", "You [{playerLevel} | {playerHealth}/{playerMaxHealth}] unload the {playerWeapon} [{playerAmmunition}/{playerMaxAmmunition}] into the opposing {enemyName} with {playerDamage} points of damage - a loud '{playerWeaponSound}' sounds.", "Cock, Aim, Fire! Your [{playerLevel} | {playerHealth}/{playerMaxHealth}] {playerWeapon} [{playerAmmunition}/{playerMaxAmmunition}] deals {playerDamage} points of damage to the enemy {enemyName}."],
+  shootPlayer: ["You [{playerLevel} | {playerHealth}/{playerMaxHealth}] fire your {playerWeapon} [{playerAmmunition}/{playerMaxAmmunition}] {:1F4A5} and it does a {playerWeaponSound}, dealing a whopping {playerDamage} points of damage to your enemy - his {enemyArmor} {enemyArmorSound}s.", "You [{playerLevel} | {playerHealth}/{playerMaxHealth}] unload the {playerWeapon} [{playerAmmunition}/{playerMaxAmmunition}] {:1F4A5} into the opposing {enemyName} with {playerDamage} points of damage - a loud '{playerWeaponSound}' sounds.", "Cock, Aim, Fire {:1F4A5}! Your [{playerLevel} | {playerHealth}/{playerMaxHealth}] {playerWeapon} [{playerAmmunition}/{playerMaxAmmunition}] deals {playerDamage} points of damage to the enemy {enemyName}."],
   shotMissedPlayer: ["You [{playerLevel} | {playerHealth}/{playerMaxHealth}] fire your {playerWeapon} [{playerAmmunition}/{playerMaxAmmunition}], which {playerWeaponSound}s, but you miss!", "You [{playerLevel} | {playerHealth}/{playerMaxHealth}] shoot the {playerWeapon} [{playerAmmunition}/{playerMaxAmmunition}], but you miss slightly!", "The shot you [{playerLevel} | {playerHealth}/{playerMaxHealth}] let loose from your {playerWeapon} misses!"],
   noAmmunitionPlayer: ['You [{playerLevel} | {playerHealth}/{playerMaxHealth}] try to fire your unloaded {playerWeapon} [{playerAmmunition}/{playerMaxAmmunition}] and unsurprisingly fail to do so!'],
-  diePlayer: ["The opposing {enemyName} mortally wounded you. You ache in pain, shout your last: '{playerDeathcry}' and sink to the ground."],
-  dodgeEnemy: ["The enemy {enemyName} [{enemyHealth}/{enemyMaxHealth}] throws himself into cover.", "The opposing {enemyName} [{enemyHealth}/{enemyMaxHealth}] swiftly strives to the side.", "The enemy [{enemyHealth}/{enemyMaxHealth}] quickly throws himself to the ground."],
-  reloadEnemy: ["The opposing {enemyName} [{enemyHealth}/{enemyMaxHealth}] pushes a round into the {enemyWeapon}.", "The enemy {enemyName} [{enemyHealth}/{enemyMaxHealth}] reloads the {enemyWeapon}.", "The opponent [{enemyHealth}/{enemyMaxHealth}] puts a shot into the {enemyWeapon}."],
-  reloadFailedEnemy: ['Your enemy [{enemyHealth}/{enemyMaxHealth}] tries to load another shot, but the {enemyWeapon} is already fully loaded.'],
-  shootEnemy: ["The opposing {enemyName} [{enemyHealth}/{enemyMaxHealth}] fires the {enemyWeapon} and it does a {enemyWeaponSound}, dealing a whopping {enemyDamage} points of damage to you - your {playerArmor} {playerArmorSound}s.", "The opposing {enemyName} [{enemyHealth}/{enemyMaxHealth}] unloads the {enemyWeapon} with {enemyDamage} points of damage - a loud '{enemyWeaponSound}' sounds.", "The opposing {enemyName} [{enemyHealth}/{enemyMaxHealth}] {enemyWeapon} deals {enemyDamage} points of damage to you."],
-  shotMissedEnemy: ['The opposing {enemyName} [{enemyHealth}/{enemyMaxHealth}] misses you slightly with his {enemyWeapon}.'],
+  diePlayer: ["The opposing {enemyName} mortally wounded you {:1F635}. You ache in pain, shout your last: '{playerDeathcry}' and sink to the ground."],
+  dodgeEnemy: ["The enemy {enemyName} [{enemyHealth}/{enemyMaxHealth}] throws [enemyGender:m->himself,f->herself,n->itself] into cover.", "The opposing {enemyName} [{enemyHealth}/{enemyMaxHealth}] swiftly strives to the side.", "The enemy [{enemyHealth}/{enemyMaxHealth}] quickly throws [enemyGender:m->himself,f->herself,n->itself] to the ground."],
+  reloadEnemy: ["The opposing {enemyName} [{enemyHealth}/{enemyMaxHealth}] pushes a round into the {enemyWeapon}.", "The enemy {enemyName} [{enemyHealth}/{enemyMaxHealth}] reloads the {enemyWeapon}.", "The opponent [{enemyHealth}/{enemyMaxHealth}] puts a shot into [enemyGender:m->his,f->her,n->its] {enemyWeapon}."],
+  reloadFailedEnemy: ['Your enemy [{enemyHealth}/{enemyMaxHealth}] tries to load another shot, but [enemyGender:m->his,f->her,n->its] {enemyWeapon} is already fully loaded.'],
+  shootEnemy: ["The opposing {enemyName} [{enemyHealth}/{enemyMaxHealth}] fires [enemyGender:m->his,f->her,n->its] {enemyWeapon} {:1F4A5} and it does a {enemyWeaponSound}, dealing a whopping {enemyDamage} points of damage to you - your {playerArmor} {playerArmorSound}s.", "The opposing {enemyName} [{enemyHealth}/{enemyMaxHealth}] unloads [enemyGender:m->his,f->her,n->its] {enemyWeapon} {:1F4A5} with {enemyDamage} points of damage - a loud '{enemyWeaponSound}' sounds.", "The opposing {enemyName}s [{enemyHealth}/{enemyMaxHealth}] {enemyWeapon} deals {enemyDamage} points of damage to you {:1F4A5}."],
+  shotMissedEnemy: ['The opposing {enemyName} [{enemyHealth}/{enemyMaxHealth}] misses you slightly with [enemyGender:m->his,f->her,n->its] {enemyWeapon}.'],
   noAmmunitionEnemy: ['Your enemy [{enemyHealth}/{enemyMaxHealth}] has no shots left but still tries to shoot, stupid...'],
-  dieEnemy: ["You wounded the opposing {enemyName} [{enemyHealth}/{enemyMaxHealth}] badly with your {playerWeapon}. He sinks to the ground, mortally wounded, shouting in agony: '{enemyDeathcry}'. You have gained {xpGain}XP"],
+  dieEnemy: ["You wounded the opposing {enemyName} [{enemyHealth}/{enemyMaxHealth}] badly with your {playerWeapon} {:2620}. [enemyGender:m->He,f->She,n->It] sinks to the ground, mortally wounded, shouting in agony: '{enemyDeathcry}'. You have gained {xpGain}XP."],
   lookDifferent: ['You look to the {direction}. You see a {close} upclose and a {far} in the distance.', 'You look in {direction}ern direction. Infront of you there is a {close}, a {far} is further away.', 'You start looking into the {direction}. You gaze upon a {far} in the distance while standing infront of a {close}.'],
   lookSame: ['You look to the {direction}. You see a {close} that continues in the distance.', 'You look in {direction}ern direction. Infront of you there is a {close}, which continues in the distance.', 'You start looking into the {direction}. A {close} stretches up to the horizon.'],
-  task: ['Chapter {taskNumber} - {taskTitle}:\n{taskDescription}\n🧭{taskDirections} - {taskXP}XP'],
-  info: ['Lvl. {playerLevel} | {playerHealth}/{playerMaxHealth}\n{playerXP}XP / {playerXPGoal}XP\n {playerWeapon}: {playerWeaponPower} | {playerAmmunition} / {playerMaxAmmunition}\n{playerArmor}: {playerArmorPower}'],
-  itemweapon: ['You have found a {itemName} [{itemPower} | {itemCapacity}]. Use player.touch() to equip it. Use player.info() to view your current equipment.'],
-  itemarmor: ['You have found a {itemName} [{itemPower}]. Use player.touch() to equip it. Use player.info() to view your current equipment.'],
+  task: ['Chapter {taskNumber} - {taskTitle}:\n{taskDescription}\n\n{:1F9ED} {taskDirections}\n{:1F4B2} {taskXP}XP'],
+  interaction: ['It seems that there is something fishy around here. Use player.touch() to find out more.'],
+  info: ['{:1F636} Lvl. {playerLevel}\n{:2764} {playerHealth}/{playerMaxHealth}\n{:1F4B2} {playerXP}XP / {playerXPGoal}XP\n{:1F52B} {playerWeapon} [{playerWeaponPower} | {playerAmmunition} / {playerMaxAmmunition}]\n{:1F458} {playerArmor} [{playerArmorPower}]'],
+  levelup: ['You have reached level {playerLevel} {:1F389}{:2728}{:1F38A}{:1F388}!'],
+  itemweapon: ['You have found a {itemName} [{itemPower} | {itemCapacity}] {:1F52B}. Use player.touch() to equip it. Use player.info() to view your current equipment.'],
+  itemarmor: ['You have found a {itemName} [{itemPower}] {:1F458}. Use player.touch() to equip it. Use player.info() to view your current equipment.'],
   touchnothing: ['There is nothing to touch.'],
-  toucharmor: ['You have now equipped a {itemName} [{itemPower}] as your armor.'],
-  touchweapon: ['You have now equipped a {itemName} [{itemPower} | {itemCapacity}] as your weapon.']
+  toucharmor: ['You have now equipped a {itemName} [{itemPower}] as your armor {:1F458}.'],
+  touchweapon: ['You have now equipped a {itemName} [{itemPower} | {itemCapacity}] as your weapon {:1F52B}.'],
+  playerDied: ['You died {:1F648}']
 };
 var _default = Library;
 exports.default = _default;
@@ -1554,7 +1713,8 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports.default = void 0;
 var Enemys = [{
-  name: "Roomba 676",
+  name: "Vroomba 676",
+  gender: 'n',
   battlecrys: ['I`m the one who cleans!', 'I will suck you!', 'Ever heard of Kerby?'],
   deathcrys: ['I`m now nothing more but the dust I used to suck...', 'I sucked to little or to much...', 'I`ll be be back!'],
   levels: {
@@ -1566,7 +1726,8 @@ var Enemys = [{
         name: 'shell',
         sounds: ['crack']
       },
-      weapons: ['rifle', 'laserpistol'],
+      weapons: ['semi-automatic rifle', 'laserpistol'],
+      loot: ['semi-automatic rifle', 'laserpistol'],
       behaviors: ['chill', 'aggressive']
     },
     5: {
@@ -1577,7 +1738,8 @@ var Enemys = [{
         name: 'shell',
         sounds: ['crack']
       },
-      weapons: ['rifle', 'laserpistol', 'shotgun', 'laserrifle'],
+      weapons: ['semi-automatic rifle', 'laserpistol', 'shotgun', 'laserrifle'],
+      loot: ['semi-automatic rifle', 'laserpistol', 'shotgun', 'laserrifle'],
       behaviors: ['chill', 'aggressive', 'crazy']
     },
     10: {
@@ -1588,7 +1750,8 @@ var Enemys = [{
         name: 'shell',
         sounds: ['crack']
       },
-      weapons: ['shotgun', 'laserrifle', 'missile launcher', 'railgun'],
+      weapons: ['shotgun', 'laserrifle', 'RPG'],
+      loot: ['shotgun', 'laserrifle', 'RPG'],
       behaviors: ['chill', 'aggressive', 'crazy', 'smart']
     }
   },
@@ -1607,7 +1770,8 @@ var Enemys = [{
   }]
 }, //Vromba 676
 {
-  name: "Roomba s9+",
+  name: "Vroomba s9+",
+  gender: 'n',
   battlecrys: ['I`m the one who cleans!', 'I will suck you!', 'Ever heard of Kerby?'],
   deathcrys: ['I`m now nothing more but dust I used to suck...', 'I sucked to little or to much...', 'I`ll be be back!'],
   levels: {
@@ -1619,7 +1783,7 @@ var Enemys = [{
         name: 'shell',
         sounds: ['crack']
       },
-      weapons: ['rifle', 'laserpistol'],
+      weapons: ['semi-automatic rifle', 'laserpistol'],
       behaviors: ['chill', 'aggressive']
     },
     4: {
@@ -1630,7 +1794,8 @@ var Enemys = [{
         name: 'shell',
         sounds: ['crack']
       },
-      weapons: ['rifle', 'laserpistol', 'shotgun', 'laserrifle'],
+      weapons: ['semi-automatic rifle', 'laserpistol', 'shotgun', 'laserrifle'],
+      loot: ['semi-automatic rifle', 'laserpistol', 'shotgun', 'laserrifle'],
       behaviors: ['chill', 'aggressive', 'crazy']
     },
     8: {
@@ -1641,7 +1806,8 @@ var Enemys = [{
         name: 'shell',
         sounds: ['crack']
       },
-      weapons: ['shotgun', 'laserrifle', 'missile launcher', 'railgun'],
+      weapons: ['revolver', 'shotgun', 'laserrifle', 'machine gun', 'missile launcher'],
+      loot: ['revolver', 'shotgun', 'laserrifle', 'machine gun', 'missile launcher'],
       behaviors: ['chill', 'aggressive', 'crazy', 'smart']
     }
   },
@@ -1658,43 +1824,47 @@ var Enemys = [{
     name: 'self-conscious',
     pattern: 'RD*'
   }]
-}, //Roomba s9+
+}, //Vroomba s9+
 {
-  name: "Samsung smart fridge",
+  name: "Sumsang smart fridge",
+  gender: 'f',
   battlecrys: ['It`s getting cold in here!', 'Stay fresh!', 'Ich mach dich kalt!'],
   deathcrys: ['You`ve defrosted me...', 'not cool!'],
   levels: {
     1: {
-      maxHealth: 30,
+      maxHealth: 20,
       xp: 100,
       armors: {
-        power: 5,
+        power: 2,
         name: 'door',
         sounds: ['crack', 'creek']
       },
-      weapons: ['rifle', 'laserpistol'],
+      weapons: ['machine gun', 'silenced sniper rifle', 'sawed-off shotgun'],
+      loot: ['machine gun', 'silenced sniper rifle', 'sawed-off shotgun'],
       behaviors: ['aggressive', 'mad']
     },
-    5: {
-      maxHealth: 50,
+    3: {
+      maxHealth: 30,
       xp: 200,
       armors: {
-        power: 5,
+        power: 4,
         name: 'door',
         sounds: ['crack', 'creek']
       },
-      weapons: ['rifle', 'laserpistol', 'shotgun', 'laserrifle'],
+      weapons: ['machine gun', 'silenced sniper rifle', 'sawed-off shotgun', 'RPG', 'raygun'],
+      loot: ['machine gun', 'silenced sniper rifle', 'sawed-off shotgun', 'RPG', 'raygun'],
       behaviors: ['aggressive', 'mad', 'smart']
     },
-    8: {
-      maxHealth: 80,
+    9: {
+      maxHealth: 50,
       xp: 500,
       armors: {
         power: 5,
         name: 'door',
         sounds: ['crack', 'creek']
       },
-      weapons: ['shotgun', 'laserrifle', 'missile launcher', 'railgun'],
+      weapons: ['raygun', 'RPG', 'fusionblaster'],
+      loot: ['raygun', 'RPG', 'fusionblaster'],
       behaviors: ['aggressive', 'mad', 'smart', 'self-conscious']
     }
   },
@@ -1711,9 +1881,67 @@ var Enemys = [{
     name: 'self-conscious',
     pattern: 'RD*RD*RDX'
   }]
-}, //Samsung smart fridge
+}, //Sumsang smart fridge
+{
+  name: "Terra t7",
+  gender: 'n',
+  battlecrys: ['I`ll make you hoe for me!', 'Sow the wind, reap the whirlwind!', 'I will fertilize the ground with your remains!'],
+  deathcrys: ['I`ll dig my own grave...', 'You reap what ypu sow.'],
+  levels: {
+    1: {
+      maxHealth: 20,
+      xp: 20,
+      armors: {
+        power: 3,
+        name: 'shell',
+        sounds: ['crack']
+      },
+      weapons: ['semi-automatic rifle', 'laserpistol', 'assault rifle'],
+      loot: ['semi-automatic rifle', 'laserpistol', 'assault rifle'],
+      behaviors: ['chill', 'aggressive']
+    },
+    5: {
+      maxHealth: 30,
+      xp: 35,
+      armors: {
+        power: 4,
+        name: 'shell',
+        sounds: ['crack']
+      },
+      weapons: ['semi-automatic rifle', 'laserpistol', 'shotgun', 'laserrifle', 'sniper rifle'],
+      loot: ['semi-automatic rifle', 'laserpistol', 'shotgun', 'laserrifle', 'sniper rifle'],
+      behaviors: ['chill', 'aggressive', 'crazy']
+    },
+    10: {
+      maxHealth: 40,
+      xp: 70,
+      armors: {
+        power: 6,
+        name: 'shell',
+        sounds: ['crack']
+      },
+      weapons: ['sawed-off shotgun', 'laserrifle', 'missile launcher'],
+      loot: ['sawed-off shotgun', 'laserrifle', 'missile launcher'],
+      behaviors: ['chill', 'aggressive', 'crazy', 'smart']
+    }
+  },
+  patterns: [{
+    name: 'aggressive',
+    pattern: 'RS'
+  }, {
+    name: 'crazy',
+    pattern: 'X'
+  }, {
+    name: 'chill',
+    pattern: 'RDDSXX'
+  }, {
+    name: 'smart',
+    pattern: 'RDSR*'
+  }]
+}, //Terra t7
 {
   name: "stupid dude from the Internet cafe",
+  gender: 'm',
   battlecrys: ['Teemo is boss!'],
   deathcrys: ['I was fooled!'],
   maxHealth: 50,
@@ -1724,21 +1952,23 @@ var Enemys = [{
   loot: ['leather jacket', 'crossbow'],
   patterns: [{
     name: 'self-confident',
-    pattern: '*D*R'
+    pattern: '*DXR'
   }]
 }, //stupid dude from the Internet cafe
 {
   name: "Tesla Model G that was hacked by gunter.js",
+  gender: 'n',
   battlecrys: ['I calculated this!'],
   deathcrys: ['I calculated this, but damn am I bad at maths!'],
   maxHealth: 100,
   xp: 1200,
   armors: {
-    power: 12,
+    power: 8,
     name: 'carriage',
     sounds: ['crack', 'creek', 'screech']
   },
   weapons: ['missile launcher'],
+  loot: ['missile launcher'],
   behaviors: ['enraged'],
   patterns: [{
     name: 'enraged',
@@ -1766,8 +1996,8 @@ var Player = {
       x: 0,
       y: 0
     },
-    weapon: 'railgun',
-    armor: 'exosuite'
+    weapon: 'pistol',
+    armor: 'winter coat'
   },
   battlecrys: ['Engarde!', 'I will wreck you!'],
   deathcrys: ['Ahhhhhhh', 'I took an arrow to the knee!']
@@ -1782,43 +2012,50 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports.default = void 0;
 var Story = [{
-  title: 'Test',
-  prolog: "",
-  epilog: '',
-  description: '',
-  xp: 20,
-  goal: {
-    x: 0,
-    y: 1
-  },
-  tiles: [{
-    name: 'Conrad',
-    x: 0,
-    y: 1,
-    happening: 'encounter',
-    options: ['stupid dude from the Internet cafe']
-  }]
-}, {
   title: 'Get some tools',
-  prolog: "After the site went down, an AI, only known as 'gunter.js', has escaped from it's Docker container. It is now protecting the server room with hacked Roombas (and a Samsung smart fridge)! Walk down to Conrad and get yourself some tools!",
+  prolog: "After the site went down, an AI, only known as 'gunter.js', has escaped from it's Docker container. It is now protecting the server room with hacked Vroombas (and a Sumsang smart fridge)! Walk down to Cornad and get yourself some tools!",
   epilog: 'You pay at self check-out and remember to bring the recipe. You are now ready to face any challenge to come!',
-  description: 'Go to your local Conrad store and pick up some guns.',
+  description: 'Go to your local Cornad store and pick up some guns.',
   xp: 20,
   goal: {
     x: 3,
     y: -2
   },
   tiles: [{
-    name: 'Conrad',
+    name: 'Cornad',
     x: 3,
     y: -2,
     happening: 'item',
-    options: ['shotgun']
+    options: ['shotgun', 'assault rifle', 'revolver']
+  }, {
+    name: 'garbage dumb',
+    x: 1,
+    y: 0,
+    happening: 'interaction',
+    options: "You`ve found a flashdrive, it has the word 'totally' written on it."
+  }, {
+    name: 'garbage dumb',
+    x: -1,
+    y: 0,
+    happening: 'interaction',
+    options: "You`ve found a flashdrive, it has the word 'not' written on it."
+  }, {
+    name: 'garbage dumb',
+    x: 0,
+    y: 1,
+    happening: 'interaction',
+    options: "You`ve found a flashdrive, it has the word 'midget' written on it."
+  }, {
+    name: 'garbage dumb',
+    x: 0,
+    y: -1,
+    happening: 'interaction',
+    options: "You`ve found a flashdrive, it has the word 'porn' written on it."
   }]
 }, {
-  title: "Where's Strato?",
+  title: "Where's Starto?",
   prolog: 'To find out where the server is actually located you need to get some internet! You decide to visit an Internet cafe.',
-  epilog: 'You sit down with a freshly brewed coffee. In the isle next to you a loud discussion about the best League of Legends champion builds up.',
+  epilog: 'You sit down with a freshly brewed coffee. In the isle next to you a loud discussion about the best Legend of the Liga champion builds up.',
   description: 'Find the nearest Internet cafe.',
   xp: 50,
   goal: {
@@ -1826,7 +2063,7 @@ var Story = [{
     y: 0
   },
   tiles: [{
-    name: 'Conrad',
+    name: 'Cornad',
     x: 3,
     y: -2,
     happening: null
@@ -1839,7 +2076,7 @@ var Story = [{
 }, {
   title: 'The real champion',
   prolog: 'A pretty nasty looking dude is absolutely sure, that Teemo is the only valid anwser. You, a Master Yi main, beg to differ. The two of you take the fight outside. You are pretty sure he is just as incompetent on the street as he is on the keyboard.',
-  epilog: 'After smashing that dudes face and spreading some more of the everlasting glory of being a Yi main you return to your place. After a quick Bing search you find the address of the Strato headquarter.',
+  epilog: 'After smashing that dudes face and spreading some more of the everlasting glory of being a Yi main you return to your place. After a quick Bing search you find the address of the Starto headquarter.',
   description: 'Beat the stupid dude from the Internet cafe.',
   xp: 50,
   goal: {
@@ -1847,7 +2084,7 @@ var Story = [{
     y: 0
   },
   tiles: [{
-    name: 'Conrad',
+    name: 'Cornad',
     x: 3,
     y: -2,
     happening: null
@@ -1864,17 +2101,17 @@ var Story = [{
     options: ['stupid dude from the Internet cafe']
   }]
 }, {
-  title: 'The Strato HQ',
+  title: 'The Starto HQ',
   prolog: 'As updating the PHP version from remote failed you will need physical access to the actual server.',
-  epilog: "After your narrow win over the Strato Firewall you enter the HQ from the front door. The desk lady is in awe over your manly behaviour. You give here a wink, whispering 'I`m in' before heading to the elevator. You update the PHP version manually and reload the page. But nothing happens!",
-  description: 'Reach the Strato HQ and get past the (actual) Firewall.',
+  epilog: "After your narrow win over the Starto Firewall you enter the HQ from the front door. The desk lady is in awe over your manly behaviour. You give here a wink, whispering 'I`m in' before heading to the elevator. You update the PHP version manually and reload the page. But nothing happens!",
+  description: 'Reach the Starto HQ and get past the (actual) Firewall.',
   xp: 50,
   goal: {
     x: 2,
     y: -7
   },
   tiles: [{
-    name: 'Conrad',
+    name: 'Cornad',
     x: 3,
     y: -2,
     happening: null
@@ -1889,28 +2126,28 @@ var Story = [{
     y: 0,
     happening: null
   }, {
-    name: 'Strato HQ',
+    name: 'Starto HQ',
     x: 2,
     y: -7,
     happening: 'encounter',
-    options: ['Samsung smart fridge']
+    options: ['Sumsang smart fridge']
   }]
 }, {
   title: 'Redis the new black',
   prolog: "There is only one possible answer to this: Redis! You flush the cash, but still. Even after deinstalling the plug-in the site remains unchanged. It seems that Redis has learnt to cash itself. After having a quick look at the docs of 'gunter.js' online you realise that this was his plan all along! But you quickly come up with a back-up plan.",
   epilog: "You rip out the old RAM and quickly chuck in a new one. That was to fast, even for Redis. You press F5 nervously and rapidly, when a broken voice comes out of the speaker above the counter: 'Hallo, ich bin der Gunter.'",
-  description: 'Head back to Conrad and get some new RAM.',
+  description: 'Head back to Cornad and get some new RAM.',
   xp: 100,
   goal: {
     x: 3,
     y: -2
   },
   tiles: [{
-    name: 'Conrad',
+    name: 'Cornad',
     x: 3,
     y: -2,
     happening: 'item',
-    options: ['shotgun', 'heavy armor']
+    options: ['sawed-off shotgun', 'heavy armor']
   }, {
     name: 'military zone',
     x: 3,
@@ -1928,7 +2165,7 @@ var Story = [{
     y: 0,
     happening: null
   }, {
-    name: 'Strato HQ',
+    name: 'Starto HQ',
     x: 2,
     y: -7,
     happening: null
@@ -1937,14 +2174,14 @@ var Story = [{
   title: 'Gunter',
   prolog: 'Damn it, gunter.js is still running in the background. You see no other option but to destroy the mainframe itself.',
   epilog: 'After an insane fight with the transformable Tesla Model G, that gunter.js hacked into, you sink to the ground, covered in nothing but the pride of having saved humanity once again.',
-  description: 'Head over to Stratos Mainframe and delete gunter.js.',
+  description: 'Head over to Startos Mainframe and delete gunter.js.',
   xp: 1000,
   goal: {
     x: 2,
     y: -7
   },
   tiles: [{
-    name: 'Conrad',
+    name: 'Cornad',
     x: 3,
     y: -2,
     happening: 'item',
@@ -1960,13 +2197,13 @@ var Story = [{
     y: 0,
     happening: null
   }, {
-    name: 'secret lab',
+    name: 'ultra secret lab',
     x: 3,
     y: -7,
     happening: 'item',
     options: ['railgun']
   }, {
-    name: 'Strato HQ',
+    name: 'Starto HQ',
     x: 2,
     y: -7,
     happening: 'encounter',
@@ -1982,28 +2219,118 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 exports.default = void 0;
-var Items = [{
+var Items = [
+/*standard civil weapons*/
+{
   type: 'weapon',
   name: 'slingshot',
-  power: 4,
+  power: 3,
   deviance: 3,
   capacity: 1,
   sounds: ['ssst', 'zoom', 'shhh']
 }, {
   type: 'weapon',
-  name: 'rifle',
-  power: 6,
+  name: 'blowgun',
+  power: 2,
   deviance: 0,
   capacity: 1,
+  sounds: ['ffft']
+}, {
+  type: 'weapon',
+  name: 'crossbow',
+  power: 6,
+  deviance: 2,
+  capacity: 3,
+  sounds: ['zzing', 'zzang']
+}, {
+  type: 'weapon',
+  name: 'bow',
+  power: 4,
+  deviance: 2,
+  capacity: 1,
+  sounds: ['zzing', 'zzang']
+},
+/*standard military weapons*/
+{
+  type: 'weapon',
+  name: 'pistol',
+  power: 4,
+  deviance: 3,
+  capacity: 8,
   sounds: ['peng']
 }, {
   type: 'weapon',
-  name: 'shotgun',
+  name: 'revolver',
+  power: 5,
+  deviance: 4,
+  capacity: 6,
+  sounds: ['BENG']
+}, {
+  type: 'weapon',
+  name: 'sniper rifle',
   power: 8,
-  deviance: 8,
+  deviance: 0,
+  capacity: 1,
+  sounds: ['PENG']
+}, {
+  type: 'weapon',
+  name: 'silenced sniper rifle',
+  power: 8,
+  deviance: 0,
+  capacity: 1,
+  sounds: ['pft']
+}, {
+  type: 'weapon',
+  name: 'semi-automatic rifle',
+  power: 6,
+  deviance: 1,
+  capacity: 5,
+  sounds: ['peng']
+}, {
+  type: 'weapon',
+  name: 'assault rifle',
+  power: 5,
+  deviance: 3,
+  capacity: 16,
+  sounds: ['bang bang']
+}, {
+  type: 'weapon',
+  name: 'machine gun',
+  power: 5,
+  deviance: 4,
+  capacity: 50,
+  sounds: ['ra-ta-ta-ta-ta']
+}, {
+  type: 'weapon',
+  name: 'shotgun',
+  power: 6,
+  deviance: 4,
   capacity: 2,
   sounds: ['BANG', 'BA-BANG']
 }, {
+  type: 'weapon',
+  name: 'sawed-off shotgun',
+  power: 7,
+  deviance: 7,
+  capacity: 2,
+  sounds: ['BANG', 'BA-BANG']
+}, {
+  type: 'weapon',
+  name: 'RPG',
+  power: 20,
+  deviance: 7,
+  capacity: 1,
+  sounds: ['shhhhht ... *clink* - BOOM']
+}, {
+  type: 'weapon',
+  name: 'missile launcher',
+  power: 15,
+  deviance: 10,
+  capacity: 4,
+  sounds: ['shhhhht ... BOOM']
+},
+/*standard futuristic weapons*/
+{
   type: 'weapon',
   name: 'laserpistol',
   power: 5,
@@ -2014,16 +2341,23 @@ var Items = [{
   type: 'weapon',
   name: 'laserrifle',
   power: 8,
-  deviance: 1,
+  deviance: 0,
   capacity: 6,
   sounds: ['pew-pew']
 }, {
   type: 'weapon',
-  name: 'missile launcher',
-  power: 15,
-  deviance: 10,
-  capacity: 4,
-  sounds: ['shhhhht ... BOOM']
+  name: 'raygun',
+  power: 6,
+  deviance: 6,
+  capacity: 1,
+  sounds: ['zoing']
+}, {
+  type: 'weapon',
+  name: 'fusionblaster',
+  power: 12,
+  deviance: 12,
+  capacity: 5,
+  sounds: ['sssssh']
 }, {
   type: 'weapon',
   name: 'railgun',
@@ -2031,38 +2365,47 @@ var Items = [{
   deviance: 0,
   capacity: 1,
   sounds: ['s-ss-sss-ssss-ssssss-ssssssssSSSS-sssssSSSSSSSSSSSSSSS-SSSSSSSSSSSSSSSSSSSSSSSSSSSSS ... BAP-BADA-BOOOM']
-}, {
-  type: 'weapon',
-  name: 'crossbow',
-  power: 6,
-  deviance: 6,
-  capacity: 3,
-  sounds: ['zzing', 'zzang']
+},
+/*standard civilian armor*/
+{
+  type: 'armor',
+  name: 'lab coat',
+  power: 1,
+  sounds: ['rrrip', 'rrrap']
 }, {
   type: 'armor',
-  name: 'Woolrich jacket',
+  name: 'winter coat',
   power: 2,
   sounds: ['rrrip', 'rrrap']
 }, {
   type: 'armor',
+  name: 'leather jacket',
+  power: 3,
+  sounds: ['rrip']
+},
+/*standard military armor*/
+{
+  type: 'armor',
+  name: 'bullet proof vest',
+  power: 5,
+  sounds: ['ding', 'deng']
+}, {
+  type: 'armor',
   name: 'light armor',
-  power: 4,
+  power: 6,
   sounds: ['ding', 'deng']
 }, {
   type: 'armor',
   name: 'heavy armor',
-  power: 6,
+  power: 8,
   sounds: ['bong', 'beng']
-}, {
+},
+/*standard futuristic armor*/
+{
   type: 'armor',
   name: 'exosuite',
   power: 12,
   sounds: ['klink', 'klank', 'klonk']
-}, {
-  type: 'armor',
-  name: 'leather jacket',
-  power: 4,
-  sounds: ['rrip']
 }];
 var _default = Items;
 exports.default = _default;
@@ -2095,8 +2438,8 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 var Config = {
   //creates a config object which will store all of the imported fields and will be passed to the main
   language: "en",
-  introduction: "👾The year 2030. You have been recently hired by a company called yes!please, which is specialised in developing Turing test websites to keep AI's at bay. One of their older sites is currently down, due to the server still running PHP 7.1. You are tasked with getting it back on track!\nUse player.help() for more information.",
-  endcredits: "You return home to have some sleep. You arive at the yes!please office just in time for the daily stand up. As you tell them about the adventurous task you had to complete yesterday a silent but dedicated 'Ahem' comes from behind you. It is Aljoscha telling you that there is a Plug-In for that.\nYou thought was fun? Wanna do that all day? Then drop us a line at jobs@yesdevs.com and add 42 as a subject. We hope to hear from you soon!",
+  introduction: "The year 2030. You have been recently hired by a company called yes!please, which is specialised in developing Turing test websites to keep AI's at bay. One of their older sites is currently down, due to the server still running PHP 7.1. You are tasked with getting it back on track!\nAn enticing bonus will be given, when you recover the CEO`s long lost flashdrives (containg his important 'documents' he says) on the way.\nUse player.help() for more information.",
+  endcredits: "You return home to have some sleep. You arive at the yes!please office just in time for the daily stand up. As you tell them about the adventurous task you had to complete yesterday a silent but dedicated 'Ahem' comes from behind you. It is Yoshi telling you that there is a Plug-In for that.\nYou thought was fun? Wanna do that all day? Then drop us a line at jobs@yesdevs.com and add the content of the CEO`s flashdrives as a subject. We hope to hear from you soon!",
   story: _story.default,
   player: _player.default,
   tiles: _tiles.default,
@@ -10236,7 +10579,7 @@ var parent = module.bundle.parent;
 if ((!parent || !parent.isParcelRequire) && typeof WebSocket !== 'undefined') {
   var hostname = "" || location.hostname;
   var protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-  var ws = new WebSocket(protocol + '://' + hostname + ':' + "65218" + '/');
+  var ws = new WebSocket(protocol + '://' + hostname + ':' + "65484" + '/');
 
   ws.onmessage = function (event) {
     checkedAssets = {};

@@ -104,6 +104,7 @@ export default function Combat(enemy,player,config){
     this.information.enemyDeathcry = this.enemy.giveDeathcry();
     this.information.enemyBehavior = this.enemy.behavior.name;
     this.information.xpGain = this.enemy.xp;
+    this.information.enemyGender = this.enemy.gender || 'n';
   }
   this.update(); //updates on creation
 }

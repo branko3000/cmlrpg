@@ -6,8 +6,8 @@ const Player = {
   start: {
     xp: 0,
     position: {x: 0, y: 0},
-    weapon: 'railgun',
-    armor: 'exosuite'
+    weapon: 'pistol',
+    armor: 'winter coat'
   },
   battlecrys: [
     'Engarde!',

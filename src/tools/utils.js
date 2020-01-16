@@ -86,15 +86,56 @@ export function Library(books){
       string = this.books[type];
     }
     string = this.replacePlaceholders(string);
+    string = this.replaceOptions(string);
+    string = this.replaceEmojis(string);
     return string;
   }
   this.selectString = function(array){
     return array[Math.floor(Math.random() * array.length)];
   }
+  this.replaceEmojis = function(string){
+    let amount = (string.split('{:').length - 1);
+    while(amount > 0){
+      let start = string.indexOf('{:');
+      let end = string.indexOf('}',start);
+      let substring = string.substring(start,end+1);
+      let code = substring.substring(substring.indexOf(':') + 1,substring.indexOf('}'));
+      let emoji = String.fromCodePoint('0x' + code);
+      string = string.replace(substring,emoji);
+      amount--;
+    }
+    return string;
+  }
   this.replacePlaceholders = function(string){
     let informations = Object.keys(this.informations);
     for(let information of informations){
       string = string.replace('{' + information + '}',this.informations[information]);
+    }
+    return string;
+  }
+  this.replaceOptions = function(string){
+    let informations = Object.keys(this.informations);
+    for(let information of informations){
+      let key = '[' + information + ':';
+      let amount = (string.split(key).length - 1);
+      while(amount > 0){
+        let start = string.indexOf(key);
+        let end = string.indexOf(']',start);
+        let substring = string.substring(start,end+1);
+        let optionslist = substring.substring(substring.indexOf(':') + 1,substring.indexOf(']'));
+        let options = optionslist.split(',');
+        let selected = null;
+        for(let option of options){
+          if(option.includes(this.informations[information] + '->')){
+            selected = option.substring(option.indexOf('->') + 2);
+          }
+        }
+        if(!selected){
+          selected = options[0].substring(options[0].indexOf('->') + 2);
+        }
+        string = string.replace(substring,selected);
+        amount--;
+      }
     }
     return string;
   }

@@ -26,8 +26,9 @@ export default function Player(config){
         //no statchanges
     }
     this.changeXP = function(value){
+      let oldlevel = this.level;
       this.xp += value;
-      this.setLevel();
+      return this.setLevel();
     }
     this.levelFromXp= function(xp){
       return 1 + Math.floor((Math.sqrt(600+(100 * xp))/(50/(config.player.levelingSpeed || 1))));
@@ -43,6 +44,10 @@ export default function Player(config){
           this.maxHealth = config.player.baseHealth + (this.level * config.player.healthPerLevel);
           this.currentHealth = this.maxHealth;
         }
+        return true;
+      }
+      else{
+        return false;
       }
     }
 
