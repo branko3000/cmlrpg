@@ -1,5 +1,5 @@
 const Player = {
-  baseHealth: 20,
+  baseHealth: 30,
   healthPerLevel: 5,
   levelingSpeed: 1,
   resetHealthOnLevelUp: true,

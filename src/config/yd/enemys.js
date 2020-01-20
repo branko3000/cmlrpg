@@ -172,7 +172,7 @@ const Enemys = [
     ]
   }, //Sumsang smart fridge
   {
-    name: "Terra t7",
+    name: "Terry t7",
     gender: 'n',
     battlecrys: [
       'I`ll make you hoe for me!',
@@ -227,7 +227,7 @@ const Enemys = [
         pattern: 'RDSR*'
       }
     ]
-  }, //Terra t7
+  }, //Terry t7
   {
     name: "stupid dude from the Internet cafe",
     gender: 'm',

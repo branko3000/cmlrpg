@@ -41,7 +41,7 @@ export default function Player(config){
       if(level != this.level){
         this.level = level;
         if(config.player.resetHealthOnLevelUp == true){
-          this.maxHealth = config.player.baseHealth + (this.level * config.player.healthPerLevel);
+          this.maxHealth = config.player.baseHealth + ((this.level - 1) * config.player.healthPerLevel);
           this.currentHealth = this.maxHealth;
         }
         return true;

@@ -11,8 +11,8 @@ export default function Webconsole(main){
   this.look = function(direction){
     return main.handle("look",[direction]);
   }
-  this.touch = function(){
-    return main.handle('touch');
+  this.touch = function(option){
+    return main.handle('touch',[option]);
   }
   this.dodge = function(){
     return main.handle("dodge");

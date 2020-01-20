@@ -57,8 +57,8 @@ const Tiles = [
     options: {
       30: 'Vroomba 676',
       15: 'Vroomba s9+',
-      5: 'Terry t7',
-      50: 'Sumsang smart fridge'
+      50: 'Terry t7',
+      20: 'Sumsang smart fridge'
     }
   },
   /*enviroment with loot*/

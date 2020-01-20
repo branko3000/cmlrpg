@@ -345,28 +345,40 @@ This file contains an array with task objects. These tasks represent the story, 
 
 ```js
 const Story = [
-	{
-    name: '',
-    prolog: '',
-    epilog: '',
-    description: '',
-    xp: 20,
-    goals: {x: 10, y: -5},
-	tiles: [
-      {
-        name: 'forsaken castle',
-    	x: 10,
-    	y: -5,
-        happening: 'encounter',
-        enemys: [
-          'ghost of the king'
-        ]
-      }
-    ]
-  }
+  tiles: [
+  	{
+      name: 'forrest',
+      x: 0,
+      y: 0,
+      happening: null
+    }
+	],
+  chapters: [
+  	{
+      name: 'Chapter 1',
+      prolog: 'You are lost in a forrest.',
+      epilog: 'You have found a way out.',
+      description: 'Find a way out of the forrest',
+      xp: 20,
+      goals: {x: 0, y: 1},
+      tiles: [
+        {
+          name: 'forsaken castle',
+          x: 0,
+          y: 1,
+          happening: 'encounter',
+          enemys: [
+            'ghost of the king'
+          ]
+        }
+      ]
+  	}
+	]
 ]
 export default Story;
 ```
+
+The `tiles` array contains a list of tiles, that should be globally overwritten, no matter what chapter is currently active. The `chapters` array contains the story\`s chapters. THeir respective `tiles` array will only be active, when this specific chapter is active. Chapter overrides override story overrides.
 
 A chapter begins when the one before is completed. The player is then presented with the `epilog` of the finished chapter followed by the `prolog` of the new task. The first chapters `prolog` will be appended to the overall introduction at the start of the game. The last chapters `epilog` will be written right before the end credits. A chapters `description` and `name` will be given to the player when he calls the `task` function through the *Avatar*. The chapter number is defined by the position of the chapter in the `Story.js` array.
 

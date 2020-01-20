@@ -1,5 +1,5 @@
 import Main from './comp/main.js'; //imports the main object
-import Config from './config/yd/en/config.js'; //load the config for your language
+import Config from './config/yd/config.js'; //load the config for your language
 import Avatar from './avatars/webconsole.js'; //load the avatar for your enviroment
 
 require("babel-core/register");

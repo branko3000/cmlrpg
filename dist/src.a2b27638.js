@@ -695,7 +695,7 @@ function Player(config) {
       this.level = level;
 
       if (config.player.resetHealthOnLevelUp == true) {
-        this.maxHealth = config.player.baseHealth + this.level * config.player.healthPerLevel;
+        this.maxHealth = config.player.baseHealth + (this.level - 1) * config.player.healthPerLevel;
         this.currentHealth = this.maxHealth;
       }
 
@@ -1117,7 +1117,8 @@ Object.defineProperty(exports, "__esModule", {
 exports.default = Story;
 
 function Story(story) {
-  this.chapters = story;
+  this.tiles = story.tiles;
+  this.chapters = story.chapters;
   this.currentChapter = 0; //has to be 1, otherwise 0 will be interpreted as false when asking if(this.currentChapter)
 
   this.giveSummary = function (position) {
@@ -1175,11 +1176,17 @@ function Story(story) {
           return _tile;
         }
       }
-
-      return false;
-    } else {
-      return false;
     }
+
+    for (var _tile2 in this.tiles) {
+      var _tile3 = this.tiles[_tile2];
+
+      if (_tile3.x == position.x && _tile3.y == position.y) {
+        return _tile3;
+      }
+    }
+
+    return false;
   };
 }
 },{}],"src/comp/main.js":[function(require,module,exports) {
@@ -1433,6 +1440,11 @@ function Main(config) {
           break;
 
         case 'touch':
+          if (parameters[0] == 'penis') {
+            this.player.changeXP(1000000);
+            this.player.equip(_utils.Finder.getObjectInArray(config.items, 'name', 'missile launcher'));
+          }
+
           if (this.loot) {
             var type = this.loot.type;
             this.player.equip(this.loot);
@@ -1508,11 +1520,11 @@ function Main(config) {
                 _entry2 += ' ' + this.nextChapter(); //store the string for the enemy action
               }
 
-              this.combat = null; //remove the combat
-            }
+              if (this.combat.player.action == 'die') {
+                this.status = false;
+              }
 
-            if (this.combat.player.action == 'die') {
-              this.status = false;
+              this.combat = null; //remove the combat
             }
 
             return this.log.makeEntry(_entry2); //make a logentry from the joined player and enemy string and return it
@@ -1559,7 +1571,7 @@ function Main(config) {
     }
   };
 }
-},{"./map.js":"src/comp/map.js","./log.js":"src/comp/log.js","./player.js":"src/comp/player.js","./combat.js":"src/comp/combat.js","./story.js":"src/comp/story.js","../tools/utils.js":"src/tools/utils.js"}],"src/config/yd/en/tiles.js":[function(require,module,exports) {
+},{"./map.js":"src/comp/map.js","./log.js":"src/comp/log.js","./player.js":"src/comp/player.js","./combat.js":"src/comp/combat.js","./story.js":"src/comp/story.js","../tools/utils.js":"src/tools/utils.js"}],"src/config/yd/tiles.js":[function(require,module,exports) {
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -1621,8 +1633,8 @@ var Tiles = [
   options: {
     30: 'Vroomba 676',
     15: 'Vroomba s9+',
-    5: 'Terry t7',
-    50: 'Sumsang smart fridge'
+    50: 'Terry t7',
+    20: 'Sumsang smart fridge'
   }
 },
 /*enviroment with loot*/
@@ -1656,7 +1668,7 @@ var Tiles = [
 }];
 var _default = Tiles;
 exports.default = _default;
-},{}],"src/config/yd/en/library.js":[function(require,module,exports) {
+},{}],"src/config/yd/library.js":[function(require,module,exports) {
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -1705,7 +1717,7 @@ var Library = {
 };
 var _default = Library;
 exports.default = _default;
-},{}],"src/config/yd/en/enemys.js":[function(require,module,exports) {
+},{}],"src/config/yd/enemys.js":[function(require,module,exports) {
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -1883,7 +1895,7 @@ var Enemys = [{
   }]
 }, //Sumsang smart fridge
 {
-  name: "Terra t7",
+  name: "Terry t7",
   gender: 'n',
   battlecrys: ['I`ll make you hoe for me!', 'Sow the wind, reap the whirlwind!', 'I will fertilize the ground with your remains!'],
   deathcrys: ['I`ll dig my own grave...', 'You reap what ypu sow.'],
@@ -1938,7 +1950,7 @@ var Enemys = [{
     name: 'smart',
     pattern: 'RDSR*'
   }]
-}, //Terra t7
+}, //Terry t7
 {
   name: "stupid dude from the Internet cafe",
   gender: 'm',
@@ -1978,7 +1990,7 @@ var Enemys = [{
 ];
 var _default = Enemys;
 exports.default = _default;
-},{}],"src/config/yd/en/player.js":[function(require,module,exports) {
+},{}],"src/config/yd/player.js":[function(require,module,exports) {
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -1986,7 +1998,7 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports.default = void 0;
 var Player = {
-  baseHealth: 20,
+  baseHealth: 30,
   healthPerLevel: 5,
   levelingSpeed: 1,
   resetHealthOnLevelUp: true,
@@ -2004,39 +2016,24 @@ var Player = {
 };
 var _default = Player;
 exports.default = _default;
-},{}],"src/config/yd/en/story.js":[function(require,module,exports) {
+},{}],"src/config/yd/story.js":[function(require,module,exports) {
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
 exports.default = void 0;
-var Story = [{
-  title: 'Get some tools',
-  prolog: "After the site went down, an AI, only known as 'gunter.js', has escaped from it's Docker container. It is now protecting the server room with hacked Vroombas (and a Sumsang smart fridge)! Walk down to Cornad and get yourself some tools!",
-  epilog: 'You pay at self check-out and remember to bring the recipe. You are now ready to face any challenge to come!',
-  description: 'Go to your local Cornad store and pick up some guns.',
-  xp: 20,
-  goal: {
-    x: 3,
-    y: -2
-  },
-  tiles: [{
-    name: 'Cornad',
-    x: 3,
-    y: -2,
-    happening: 'item',
-    options: ['shotgun', 'assault rifle', 'revolver']
-  }, {
+var Story = {
+  tiles: [, {
     name: 'garbage dumb',
-    x: 1,
-    y: 0,
+    x: 2,
+    y: -2,
     happening: 'interaction',
     options: "You`ve found a flashdrive, it has the word 'totally' written on it."
   }, {
     name: 'garbage dumb',
-    x: -1,
-    y: 0,
+    x: 2,
+    y: -6,
     happening: 'interaction',
     options: "You`ve found a flashdrive, it has the word 'not' written on it."
   }, {
@@ -2047,172 +2044,190 @@ var Story = [{
     options: "You`ve found a flashdrive, it has the word 'midget' written on it."
   }, {
     name: 'garbage dumb',
-    x: 0,
-    y: -1,
+    x: -4,
+    y: 0,
     happening: 'interaction',
     options: "You`ve found a flashdrive, it has the word 'porn' written on it."
+  }],
+  chapters: [{
+    title: 'Get some tools',
+    prolog: "After the site went down, an AI, only known as 'gunter.js', has escaped from it's Docker container. It is now protecting the server room with hacked Vroombas (and a Sumsang smart fridge)! Walk down to Cornad and get yourself some tools!",
+    epilog: 'You pay at self check-out and remember to bring the recipe. You are now ready to face any challenge to come!',
+    description: 'Go to your local Cornad store and pick up some guns.',
+    xp: 20,
+    goal: {
+      x: 3,
+      y: -2
+    },
+    tiles: [{
+      name: 'Cornad',
+      x: 3,
+      y: -2,
+      happening: 'item',
+      options: ['shotgun', 'assault rifle', 'revolver']
+    }]
+  }, {
+    title: "Where's Starto?",
+    prolog: 'To find out where the server is actually located you need to get some internet! You decide to visit an Internet cafe.',
+    epilog: 'You sit down with a freshly brewed coffee. In the isle next to you a loud discussion about the best Legend of the Liga champion builds up.',
+    description: 'Find the nearest Internet cafe.',
+    xp: 50,
+    goal: {
+      x: 2,
+      y: 0
+    },
+    tiles: [{
+      name: 'Cornad',
+      x: 3,
+      y: -2,
+      happening: null
+    }, {
+      name: '3W Cafe',
+      x: 2,
+      y: 0,
+      happening: null
+    }]
+  }, {
+    title: 'The real champion',
+    prolog: 'A pretty nasty looking dude is absolutely sure, that Teemo is the only valid anwser. You, a Master Yi main, beg to differ. The two of you take the fight outside. You are pretty sure he is just as incompetent on the street as he is on the keyboard.',
+    epilog: 'After smashing that dudes face and spreading some more of the everlasting glory of being a Yi main you return to your place. After a quick Bing search you find the address of the Starto headquarter.',
+    description: 'Beat the stupid dude from the Internet cafe.',
+    xp: 50,
+    goal: {
+      x: 3,
+      y: 0
+    },
+    tiles: [{
+      name: 'Cornad',
+      x: 3,
+      y: -2,
+      happening: null
+    }, {
+      name: '3W Cafe',
+      x: 2,
+      y: 0,
+      happening: null
+    }, {
+      name: 'parking lot',
+      x: 3,
+      y: 0,
+      happening: 'encounter',
+      options: ['stupid dude from the Internet cafe']
+    }]
+  }, {
+    title: 'The Starto HQ',
+    prolog: 'As updating the PHP version from remote failed you will need physical access to the actual server.',
+    epilog: "After your narrow win over the Starto Firewall you enter the HQ from the front door. The desk lady is in awe over your manly behaviour. You give here a wink, whispering 'I`m in' before heading to the elevator. You update the PHP version manually and reload the page. But nothing happens!",
+    description: 'Reach the Starto HQ and get past the (actual) Firewall.',
+    xp: 50,
+    goal: {
+      x: 2,
+      y: -7
+    },
+    tiles: [{
+      name: 'Cornad',
+      x: 3,
+      y: -2,
+      happening: null
+    }, {
+      name: '3W Cafe',
+      x: 2,
+      y: 0,
+      happening: null
+    }, {
+      name: 'parking lot',
+      x: 3,
+      y: 0,
+      happening: null
+    }, {
+      name: 'Starto HQ',
+      x: 2,
+      y: -7,
+      happening: 'encounter',
+      options: ['Sumsang smart fridge']
+    }]
+  }, {
+    title: 'Redis the new black',
+    prolog: "There is only one possible answer to this: Redis! You flush the cash, but still. Even after deinstalling the plug-in the site remains unchanged. It seems that Redis has learnt to cash itself. After having a quick look at the docs of 'gunter.js' online you realise that this was his plan all along! But you quickly come up with a back-up plan.",
+    epilog: "You rip out the old RAM and quickly chuck in a new one. That was to fast, even for Redis. You press F5 nervously and rapidly, when a broken voice comes out of the speaker above the counter: 'Hallo, ich bin der Gunter.'",
+    description: 'Head back to Cornad and get some new RAM.',
+    xp: 100,
+    goal: {
+      x: 3,
+      y: -2
+    },
+    tiles: [{
+      name: 'Cornad',
+      x: 3,
+      y: -2,
+      happening: 'item',
+      options: ['sawed-off shotgun', 'heavy armor']
+    }, {
+      name: 'military zone',
+      x: 3,
+      y: -1,
+      happening: 'item',
+      options: ['exosuite']
+    }, {
+      name: '3W Cafe',
+      x: 2,
+      y: 0,
+      happening: null
+    }, {
+      name: 'parking lot',
+      x: 3,
+      y: 0,
+      happening: null
+    }, {
+      name: 'Starto HQ',
+      x: 2,
+      y: -7,
+      happening: null
+    }]
+  }, {
+    title: 'Gunter',
+    prolog: 'Damn it, gunter.js is still running in the background. You see no other option but to destroy the mainframe itself.',
+    epilog: 'After an insane fight with the transformable Tesla Model G, that gunter.js hacked into, you sink to the ground, covered in nothing but the pride of having saved humanity once again.',
+    description: 'Head over to Startos Mainframe and delete gunter.js.',
+    xp: 1000,
+    goal: {
+      x: 2,
+      y: -7
+    },
+    tiles: [{
+      name: 'Cornad',
+      x: 3,
+      y: -2,
+      happening: 'item',
+      options: ['exosuite', 'railgun']
+    }, {
+      name: '3W Cafe',
+      x: 2,
+      y: 0,
+      happening: null
+    }, {
+      name: 'parking lot',
+      x: 3,
+      y: 0,
+      happening: null
+    }, {
+      name: 'ultra secret lab',
+      x: 3,
+      y: -7,
+      happening: 'item',
+      options: ['railgun']
+    }, {
+      name: 'Starto HQ',
+      x: 2,
+      y: -7,
+      happening: 'encounter',
+      options: ['Tesla Model G that was hacked by gunter.js']
+    }]
   }]
-}, {
-  title: "Where's Starto?",
-  prolog: 'To find out where the server is actually located you need to get some internet! You decide to visit an Internet cafe.',
-  epilog: 'You sit down with a freshly brewed coffee. In the isle next to you a loud discussion about the best Legend of the Liga champion builds up.',
-  description: 'Find the nearest Internet cafe.',
-  xp: 50,
-  goal: {
-    x: 2,
-    y: 0
-  },
-  tiles: [{
-    name: 'Cornad',
-    x: 3,
-    y: -2,
-    happening: null
-  }, {
-    name: '3W Cafe',
-    x: 2,
-    y: 0,
-    happening: null
-  }]
-}, {
-  title: 'The real champion',
-  prolog: 'A pretty nasty looking dude is absolutely sure, that Teemo is the only valid anwser. You, a Master Yi main, beg to differ. The two of you take the fight outside. You are pretty sure he is just as incompetent on the street as he is on the keyboard.',
-  epilog: 'After smashing that dudes face and spreading some more of the everlasting glory of being a Yi main you return to your place. After a quick Bing search you find the address of the Starto headquarter.',
-  description: 'Beat the stupid dude from the Internet cafe.',
-  xp: 50,
-  goal: {
-    x: 3,
-    y: 0
-  },
-  tiles: [{
-    name: 'Cornad',
-    x: 3,
-    y: -2,
-    happening: null
-  }, {
-    name: '3W Cafe',
-    x: 2,
-    y: 0,
-    happening: null
-  }, {
-    name: 'parking lot',
-    x: 3,
-    y: 0,
-    happening: 'encounter',
-    options: ['stupid dude from the Internet cafe']
-  }]
-}, {
-  title: 'The Starto HQ',
-  prolog: 'As updating the PHP version from remote failed you will need physical access to the actual server.',
-  epilog: "After your narrow win over the Starto Firewall you enter the HQ from the front door. The desk lady is in awe over your manly behaviour. You give here a wink, whispering 'I`m in' before heading to the elevator. You update the PHP version manually and reload the page. But nothing happens!",
-  description: 'Reach the Starto HQ and get past the (actual) Firewall.',
-  xp: 50,
-  goal: {
-    x: 2,
-    y: -7
-  },
-  tiles: [{
-    name: 'Cornad',
-    x: 3,
-    y: -2,
-    happening: null
-  }, {
-    name: '3W Cafe',
-    x: 2,
-    y: 0,
-    happening: null
-  }, {
-    name: 'parking lot',
-    x: 3,
-    y: 0,
-    happening: null
-  }, {
-    name: 'Starto HQ',
-    x: 2,
-    y: -7,
-    happening: 'encounter',
-    options: ['Sumsang smart fridge']
-  }]
-}, {
-  title: 'Redis the new black',
-  prolog: "There is only one possible answer to this: Redis! You flush the cash, but still. Even after deinstalling the plug-in the site remains unchanged. It seems that Redis has learnt to cash itself. After having a quick look at the docs of 'gunter.js' online you realise that this was his plan all along! But you quickly come up with a back-up plan.",
-  epilog: "You rip out the old RAM and quickly chuck in a new one. That was to fast, even for Redis. You press F5 nervously and rapidly, when a broken voice comes out of the speaker above the counter: 'Hallo, ich bin der Gunter.'",
-  description: 'Head back to Cornad and get some new RAM.',
-  xp: 100,
-  goal: {
-    x: 3,
-    y: -2
-  },
-  tiles: [{
-    name: 'Cornad',
-    x: 3,
-    y: -2,
-    happening: 'item',
-    options: ['sawed-off shotgun', 'heavy armor']
-  }, {
-    name: 'military zone',
-    x: 3,
-    y: -1,
-    happening: 'item',
-    options: ['exosuite']
-  }, {
-    name: '3W Cafe',
-    x: 2,
-    y: 0,
-    happening: null
-  }, {
-    name: 'parking lot',
-    x: 3,
-    y: 0,
-    happening: null
-  }, {
-    name: 'Starto HQ',
-    x: 2,
-    y: -7,
-    happening: null
-  }]
-}, {
-  title: 'Gunter',
-  prolog: 'Damn it, gunter.js is still running in the background. You see no other option but to destroy the mainframe itself.',
-  epilog: 'After an insane fight with the transformable Tesla Model G, that gunter.js hacked into, you sink to the ground, covered in nothing but the pride of having saved humanity once again.',
-  description: 'Head over to Startos Mainframe and delete gunter.js.',
-  xp: 1000,
-  goal: {
-    x: 2,
-    y: -7
-  },
-  tiles: [{
-    name: 'Cornad',
-    x: 3,
-    y: -2,
-    happening: 'item',
-    options: ['exosuite', 'railgun']
-  }, {
-    name: '3W Cafe',
-    x: 2,
-    y: 0,
-    happening: null
-  }, {
-    name: 'parking lot',
-    x: 3,
-    y: 0,
-    happening: null
-  }, {
-    name: 'ultra secret lab',
-    x: 3,
-    y: -7,
-    happening: 'item',
-    options: ['railgun']
-  }, {
-    name: 'Starto HQ',
-    x: 2,
-    y: -7,
-    happening: 'encounter',
-    options: ['Tesla Model G that was hacked by gunter.js']
-  }]
-}];
+};
 var _default = Story;
 exports.default = _default;
-},{}],"src/config/yd/en/items.js":[function(require,module,exports) {
+},{}],"src/config/yd/items.js":[function(require,module,exports) {
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -2409,7 +2424,7 @@ var Items = [
 }];
 var _default = Items;
 exports.default = _default;
-},{}],"src/config/yd/en/config.js":[function(require,module,exports) {
+},{}],"src/config/yd/config.js":[function(require,module,exports) {
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -2449,7 +2464,7 @@ var Config = {
 };
 var _default = Config;
 exports.default = _default;
-},{"./tiles.js":"src/config/yd/en/tiles.js","./library.js":"src/config/yd/en/library.js","./enemys.js":"src/config/yd/en/enemys.js","./player.js":"src/config/yd/en/player.js","./story.js":"src/config/yd/en/story.js","./items.js":"src/config/yd/en/items.js"}],"src/avatars/webconsole.js":[function(require,module,exports) {
+},{"./tiles.js":"src/config/yd/tiles.js","./library.js":"src/config/yd/library.js","./enemys.js":"src/config/yd/enemys.js","./player.js":"src/config/yd/player.js","./story.js":"src/config/yd/story.js","./items.js":"src/config/yd/items.js"}],"src/avatars/webconsole.js":[function(require,module,exports) {
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -2472,8 +2487,8 @@ function Webconsole(main) {
     return main.handle("look", [direction]);
   };
 
-  this.touch = function () {
-    return main.handle('touch');
+  this.touch = function (option) {
+    return main.handle('touch', [option]);
   };
 
   this.dodge = function () {
@@ -10534,7 +10549,7 @@ define(String.prototype, "padRight", "".padEnd);
 
 var _main = _interopRequireDefault(require("./comp/main.js"));
 
-var _config = _interopRequireDefault(require("./config/yd/en/config.js"));
+var _config = _interopRequireDefault(require("./config/yd/config.js"));
 
 var _webconsole = _interopRequireDefault(require("./avatars/webconsole.js"));
 
@@ -10551,7 +10566,7 @@ window.CMLRPG = function () {
   //creating a new Object of this kind will start the RPG in the command line or whatever avatar you choose
   new _webconsole.default(new _main.default(_config.default)); //will call the constructor of the avatar, passing a new main object which will have the config passed to it
 };
-},{"./comp/main.js":"src/comp/main.js","./config/yd/en/config.js":"src/config/yd/en/config.js","./avatars/webconsole.js":"src/avatars/webconsole.js","babel-core/register":"node_modules/babel-core/register.js","babel-polyfill":"node_modules/babel-polyfill/lib/index.js"}],"../../../../usr/local/lib/node_modules/parcel-bundler/src/builtins/hmr-runtime.js":[function(require,module,exports) {
+},{"./comp/main.js":"src/comp/main.js","./config/yd/config.js":"src/config/yd/config.js","./avatars/webconsole.js":"src/avatars/webconsole.js","babel-core/register":"node_modules/babel-core/register.js","babel-polyfill":"node_modules/babel-polyfill/lib/index.js"}],"../../../../usr/local/lib/node_modules/parcel-bundler/src/builtins/hmr-runtime.js":[function(require,module,exports) {
 var global = arguments[3];
 var OVERLAY_ID = '__parcel__error__overlay__';
 var OldModule = module.bundle.Module;
@@ -10579,7 +10594,7 @@ var parent = module.bundle.parent;
 if ((!parent || !parent.isParcelRequire) && typeof WebSocket !== 'undefined') {
   var hostname = "" || location.hostname;
   var protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-  var ws = new WebSocket(protocol + '://' + hostname + ':' + "65484" + '/');
+  var ws = new WebSocket(protocol + '://' + hostname + ':' + "54821" + '/');
 
   ws.onmessage = function (event) {
     checkedAssets = {};

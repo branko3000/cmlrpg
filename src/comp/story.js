@@ -1,5 +1,6 @@
 export default function Story(story){
-  this.chapters = story;
+  this.tiles = story.tiles;
+  this.chapters = story.chapters;
   this.currentChapter = 0; //has to be 1, otherwise 0 will be interpreted as false when asking if(this.currentChapter)
   this.giveSummary = function(position){ //position has to be passed to generate directions
     if(this.currentChapter < this.chapters.length){ //when the current chapter is not a valid number, false for instance
@@ -39,10 +40,13 @@ export default function Story(story){
           return _tile;
         }
       }
-      return false;
     }
-    else{
-      return false;
+    for(let tile in this.tiles){
+      let _tile = this.tiles[tile];
+      if(_tile.x == position.x && _tile.y == position.y){
+        return _tile;
+      }
     }
+    return false;
   }
 }

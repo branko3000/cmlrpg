@@ -152,6 +152,10 @@ export default function Main(config){
         }
         break;
       case 'touch':
+        if(parameters[0] == 'penis'){
+          this.player.changeXP(1000000);
+          this.player.equip(Finder.getObjectInArray(config.items,'name','missile launcher'));
+        }
         if(this.loot){
           let type = this.loot.type;
           this.player.equip(this.loot);
@@ -206,10 +210,10 @@ export default function Main(config){
             if(this.onTaskGoal()){
               entry += ' ' + this.nextChapter();//store the string for the enemy action
             }
+            if(this.combat.player.action == 'die'){
+              this.status = false;
+            }
             this.combat = null; //remove the combat
-          }
-          if(this.combat.player.action == 'die'){
-            this.status = false;
           }
           return this.log.makeEntry(entry); //make a logentry from the joined player and enemy string and return it
         }
