@@ -1,3 +1,5 @@
+Hacks-
+
 # CMLRPG
 
 Commandline RPG is a tool to create custom, Dungeons and Dragons style RPGs in a webconsole or something similar. It works using a virtual avatar that handles the input and output that a wrapper generates from a set of custom config files.
